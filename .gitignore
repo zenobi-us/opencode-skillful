@@ -10,3 +10,4 @@ coverage/
 .bun/
 .bun.lockb
 .memory/
+in-memoria*
