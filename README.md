@@ -1,6 +1,12 @@
 # OpenCode Skills Plugin
 
-An implementation of the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills) for OpenCode, providing lazy-loaded skill discovery and injection.
+An interpretation of the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills) for OpenCode, providing lazy-loaded skill discovery and injection.
+
+Differenator is : 
+
+- Conversationally the agent uses `skill_find words, words words` to discover skills
+- The agent uses `skill_use fully_resolved_skill_name` and,
+- The agent can use `skill_resource skill_relative/resource/path` to read reference material
 
 ## Installation
 
