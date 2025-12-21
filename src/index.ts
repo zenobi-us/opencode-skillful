@@ -37,19 +37,6 @@ import { createToolResourceReader } from './tools/SkillResourceReader';
 import { createUseSkillsTool } from './tools/SkillUser';
 import { createFindSkillsTool } from './tools/SkillFinder';
 
-// Re-export types for external consumers
-export type {
-  Skill,
-  TextSegment,
-  ParsedSkillQuery,
-  SkillSearchResult,
-  SkillRank,
-  PluginConfig,
-  SkillRegistry,
-  SkillRegistryController,
-  SkillRegistryManager,
-} from './types';
-
 const OpenCodePaths = envPaths('opencode', { suffix: '' });
 
 async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
