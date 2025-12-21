@@ -2,6 +2,7 @@ import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@
 import * as Bun from 'bun';
 import { join } from 'path/posix';
 import type { SkillRegistryManager } from '../types';
+import { createInstructionInjector } from './SkillUser';
 
 /**
  *  Tool to read a resource file from a skill's directory

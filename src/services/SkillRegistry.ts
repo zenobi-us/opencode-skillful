@@ -10,6 +10,7 @@ import {
 import { dirname, basename, sep } from 'path';
 import { lstat } from 'node:fs/promises';
 import matter from 'gray-matter';
+import mime from 'mime';
 
 // Validation Schema
 const SkillFrontmatterSchema = tool.schema.object({
@@ -119,22 +120,10 @@ export async function createSkillRegistry(
 const SKILL_PATH_PATTERN = /skills\/.*\/SKILL.md$/;
 
 /**
- * Infer resource type from file extension
+ * Infer resource type from file path using mime package
  */
 function inferResourceType(filePath: string): string {
-  const ext = filePath.split('.').pop()?.toLowerCase() || '';
-  const typeMap: Record<string, string> = {
-    md: 'markdown',
-    txt: 'text',
-    json: 'json',
-    yaml: 'yaml',
-    yml: 'yaml',
-    ts: 'typescript',
-    js: 'javascript',
-    sh: 'shell',
-    py: 'python',
-  };
-  return typeMap[ext] || 'unknown';
+  return mime.getType(filePath) || 'application/octet-stream';
 }
 
 /**

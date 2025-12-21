@@ -1,6 +1,5 @@
 import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
-import type { SkillRegistryManager } from '../types';
-import type { Skill } from '../types';
+import type { Skill, SkillRegistryManager } from '../types';
 import { createShellExecutor } from '../services/SkillShellProcessor';
 
 /**
@@ -94,7 +93,7 @@ Skill scripts can be invoked via "skill_exec(skillname, scriptname, ...arguments
 Skill resources can be accessed via "skill_resource(skillname, resourcename)"
         </SkillUsage>
         <SkillScripts>${skillScripts}</SkillScripts>
-        <SkillResource>${skillResources}</SkillResources>
+        <SkillResources>${skillResources}</SkillResources>
         <SkillContent>${processedContent}</SkillContent>
       </Skill>`,
       {
@@ -108,7 +107,7 @@ Skill resources can be accessed via "skill_resource(skillname, resourcename)"
   }
 }
 
-function createInstructionInjector(ctx: PluginInput) {
+export function createInstructionInjector(ctx: PluginInput) {
   // Message 1: Skill loading header (silent insertion - no AI response)
   const sendPrompt = async (text: string, props: { sessionId: string }) => {
     ctx.client.session.prompt({
