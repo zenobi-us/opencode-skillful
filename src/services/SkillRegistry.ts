@@ -119,6 +119,25 @@ export async function createSkillRegistry(
 const SKILL_PATH_PATTERN = /skills\/.*\/SKILL.md$/;
 
 /**
+ * Infer resource type from file extension
+ */
+function inferResourceType(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase() || '';
+  const typeMap: Record<string, string> = {
+    md: 'markdown',
+    txt: 'text',
+    json: 'json',
+    yaml: 'yaml',
+    yml: 'yaml',
+    ts: 'typescript',
+    js: 'javascript',
+    sh: 'shell',
+    py: 'python',
+  };
+  return typeMap[ext] || 'unknown';
+}
+
+/**
  * Generate tool name from skill path
  * Examples:
  *   skills/brand-guidelines/SKILL.md → skills_brand_guidelines
@@ -174,19 +193,26 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
     }
 
     // Generate tool name from path
+    const skillFullPath = dirname(skillPath);
+
+    // Scan for scripts and resources
+    const [scriptPaths, resourcePaths] = await Promise.all([
+      listSkillFiles(skillFullPath, 'scripts'),
+      listSkillFiles(skillFullPath, 'resources'),
+    ]);
 
     return {
       allowedTools: frontmatter.data['allowed-tools'],
       content: parsed.content.trim(),
       description: frontmatter.data.description,
-      fullPath: dirname(skillPath),
+      fullPath: skillFullPath,
       toolName: toolName(relativePath),
       license: frontmatter.data.license,
       metadata: frontmatter.data.metadata,
       name: frontmatter.data.name,
       path: skillPath,
-      scripts: [],
-      resources: [],
+      scripts: scriptPaths.map((p) => ({ path: p })),
+      resources: resourcePaths.map((p) => ({ path: p, type: inferResourceType(p) })),
     };
   } catch (error) {
     console.error(
