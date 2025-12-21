@@ -16,7 +16,7 @@ export type Skill = {
   content: string; // Markdown body
   path: string; // Full path to SKILL.md
   scripts: { path: string }[]; // Script resources
-  resources: { path: string; type: string }[]; // Other resources
+  resources: { path: string; mimetype: string }[]; // Other resources
 };
 
 /**

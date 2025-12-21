@@ -201,7 +201,7 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
       name: frontmatter.data.name,
       path: skillPath,
       scripts: scriptPaths.map((p) => ({ path: p })),
-      resources: resourcePaths.map((p) => ({ path: p, type: inferResourceType(p) })),
+      resources: resourcePaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
     };
   } catch (error) {
     console.error(
