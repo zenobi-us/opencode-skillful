@@ -38,14 +38,14 @@
 
 ### Error Handling
 
-- Check error type before accessing error properties: `error instanceof Error ? error.toString() : String(error)`
+- Check error type before accessing error properties: `error instanceof Error ? error.message.toString() : String(error)`
 - Log errors with `[ERROR]` prefix for consistency
 - Always provide error context when recording output
 
 ### Linting Rules
 
-- `@typescript-eslint/no-explicit-any`: warn (avoid `any` type)
-- `no-console`: error (minimize console logs)
+- `@typescript-eslint/no-explicit-any`: error (avoid `any` type)
+  - use type guards or properly constructed generics instead.
 - `prettier/prettier`: error (formatting violations are errors)
 
 ## Testing
