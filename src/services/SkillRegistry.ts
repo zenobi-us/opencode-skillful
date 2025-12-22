@@ -7,10 +7,15 @@ import {
   SkillRegistryManager,
 } from '../types';
 
-import { dirname, basename, sep, join } from 'path';
+import { dirname, basename, sep, join } from 'node:path';
 import { lstat } from 'node:fs/promises';
 import matter from 'gray-matter';
 import mime from 'mime';
+
+type DiscoveredSkillPath = {
+  basePath: string;
+  absolutePath: string;
+};
 
 // Validation Schema
 const SkillFrontmatterSchema = tool.schema.object({
@@ -134,8 +139,6 @@ export async function createSkillRegistry(
   };
 }
 
-const SKILL_PATH_PATTERN = /skills\/.*\/SKILL.md$/;
-
 /**
  * Infer resource type from file path using mime package
  */
@@ -152,10 +155,9 @@ function inferResourceType(filePath: string): string {
  */
 function toolName(skillPath: string): string {
   return skillPath
-    .replace(/SKILL\.md$/, '') // Remove trailing SKILL.md
     .split(sep)
-    .filter((part) => part.length > 0) // Remove empty parts
     .join('_')
+    .replace(/SKILL\.md$/, '') // Remove trailing /SKILL.md or \SKILL.md
     .replace(/-/g, '_'); // Replace hyphens with underscores
 }
 
@@ -163,21 +165,17 @@ function toolName(skillPath: string): string {
  * Parse a SKILL.md file and return structured skill data
  * Returns null if parsing fails (with error logging)
  */
-async function parseSkill(skillPath: string): Promise<Skill | null> {
+async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null> {
   try {
-    // Extract relative path using path operations for cross-platform reliability
-    // This is more robust than regex matching for path comparisons
-    const relativePath = skillPath.includes('skills')
-      ? skillPath.substring(skillPath.indexOf('skills'))
-      : skillPath;
+    const relativePath = skillPath.absolutePath.replace(skillPath.basePath + sep, '');
 
-    if (!SKILL_PATH_PATTERN.test(relativePath)) {
+    if (!relativePath) {
       console.error(`❌ Skill path does not match expected pattern: ${skillPath}`);
       return null;
     }
 
     // Read file
-    const content = await Bun.file(skillPath).text();
+    const content = await Bun.file(skillPath.absolutePath).text();
 
     // Parse YAML frontmatter
     const parsed = matter(content);
@@ -185,7 +183,7 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
     // Validate frontmatter schema
     const frontmatter = SkillFrontmatterSchema.safeParse(parsed.data);
     if (!frontmatter.success) {
-      console.error(`❌ Invalid frontmatter in ${skillPath}:`);
+      console.error(`❌ Invalid frontmatter in ${skillPath.absolutePath}:`);
       frontmatter.error.flatten().formErrors.forEach((err) => {
         console.error(`   - ${err}`);
       });
@@ -193,10 +191,10 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
     }
 
     // Validate name matches directory
-    const skillDirName = basename(dirname(skillPath));
+    const skillDirName = basename(dirname(skillPath.absolutePath));
     if (frontmatter.data.name !== skillDirName) {
       console.error(
-        `❌ Name mismatch in ${skillPath}:`,
+        `❌ Name mismatch in ${skillPath.absolutePath}:`,
         `\n   Frontmatter name: "${frontmatter.data.name}"`,
         `\n   Directory name: "${skillDirName}"`,
         `\n   Fix: Update the 'name' field in SKILL.md to match the directory name`
@@ -205,7 +203,7 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
     }
 
     // Generate tool name from path
-    const skillFullPath = dirname(skillPath);
+    const skillFullPath = dirname(skillPath.absolutePath);
 
     // Scan for scripts and resources
     const [scriptPaths, resourcePaths] = await Promise.all([
@@ -222,13 +220,13 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
       license: frontmatter.data.license,
       metadata: frontmatter.data.metadata,
       name: frontmatter.data.name,
-      path: skillPath,
+      path: skillPath.absolutePath,
       scripts: scriptPaths.map((p) => ({ path: p })),
       resources: resourcePaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
     };
   } catch (error) {
     console.error(
-      `❌ Error parsing skill ${skillPath}:`,
+      `❌ Error parsing skill ${skillPath.absolutePath}:`,
       error instanceof Error ? error.message : String(error)
     );
     return null;
@@ -264,9 +262,9 @@ export async function listSkillFiles(skillPath: string, subdirectory: string): P
   return results;
 }
 
-async function findSkillPaths(basePaths: string | string[]): Promise<string[]> {
+async function findSkillPaths(basePaths: string | string[]): Promise<DiscoveredSkillPath[]> {
   const basePathsArray = Array.isArray(basePaths) ? basePaths : [basePaths];
-  const results: string[] = [];
+  const results: DiscoveredSkillPath[] = [];
 
   const glob = new Bun.Glob('**/SKILL.md');
 
@@ -278,7 +276,10 @@ async function findSkillPaths(basePaths: string | string[]): Promise<string[]> {
       }
 
       for await (const match of glob.scan({ cwd: basePath, absolute: true })) {
-        results.push(match);
+        results.push({
+          basePath,
+          absolutePath: match,
+        });
       }
     } catch (error) {
       console.error(
