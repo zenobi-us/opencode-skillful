@@ -1,6 +1,6 @@
 import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
 import * as Bun from 'bun';
-import { join } from 'path/posix';
+import { join } from 'path';
 import type { SkillRegistryManager } from '../types';
 import { createInstructionInjector } from './SkillUser';
 

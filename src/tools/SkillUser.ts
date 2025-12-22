@@ -83,7 +83,7 @@ export async function loadSkill(skill: Skill, options: { ctx: PluginInput; sessi
     const processedContent = await processShellCommands();
     const skillScripts = skill.scripts.map((skill) => `<Script path="${skill.path}" />`).join('\n');
     const skillResources = skill.resources
-      .map((resource) => `<Resource path="${resource.path}" type="${resource.type}" />`)
+      .map((resource) => `<Resource path="${resource.path}" type="${resource.mimetype}" />`)
       .join('\n');
 
     await sendPrompt(

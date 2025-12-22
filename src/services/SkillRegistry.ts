@@ -7,7 +7,7 @@ import {
   SkillRegistryManager,
 } from '../types';
 
-import { dirname, basename, sep } from 'path';
+import { dirname, basename, sep, join } from 'path';
 import { lstat } from 'node:fs/promises';
 import matter from 'gray-matter';
 import mime from 'mime';
@@ -56,6 +56,15 @@ export async function createSkillRegistry(
   ctx: PluginInput,
   config: PluginConfig
 ): Promise<SkillRegistryManager> {
+  ctx.client.tui.showToast({
+    body: {
+      variant: 'info',
+      title: `OpencodeSkillful`,
+      // hourglass emoji
+      message: '⏳ Loading skills...',
+    },
+  });
+
   /**
    * Skill Registry Map
    *
@@ -110,6 +119,14 @@ export async function createSkillRegistry(
     return Array.from(uniqueResultsMap.values());
   }
 
+  ctx.client.tui.showToast({
+    body: {
+      variant: 'success',
+      title: `OpencodeSkillful`,
+      message: `✅ Loaded ${byFQDN.registry.size} skills from ${matches.length} files`,
+    },
+  });
+
   return {
     byName,
     byFQDN,
@@ -135,8 +152,8 @@ function inferResourceType(filePath: string): string {
  */
 function toolName(skillPath: string): string {
   return skillPath
-    .replace(/\/SKILL\.md$/, '') // Remove trailing /SKILL.md
     .split(sep)
+    .replace(/SKILL\.md$/, '') // Remove trailing SKILL.md
     .join('_')
     .replace(/-/g, '_'); // Replace hyphens with underscores
 }
@@ -221,7 +238,7 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
  * @returns Array of absolute file paths
  */
 export async function listSkillFiles(skillPath: string, subdirectory: string): Promise<string[]> {
-  const targetPath = `${skillPath}/${subdirectory}`;
+  const targetPath = join(skillPath, subdirectory);
 
   const stat = await lstat(targetPath).catch(() => null);
   if (!stat?.isDirectory()) {
