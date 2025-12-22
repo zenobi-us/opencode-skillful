@@ -1,6 +1,7 @@
 [tools]
 bun = "1.3.2"
 npm = "11.6.3"
+semver = "3.4.0"
 usage = "2.8.0"
 
 [env]
