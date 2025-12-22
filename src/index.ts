@@ -24,9 +24,7 @@
  * @see https://github.com/anthropics/skills
  */
 
-import { promises as fsPromises } from 'node:fs';
-import { lstat } from 'node:fs/promises';
-import { join, dirname, basename, sep } from 'path';
+import { sep, join, dirname, basename } from 'node:path';
 import os from 'os';
 
 import type { Plugin, PluginInput, ToolContext, ToolDefinition } from '@opencode-ai/plugin';
@@ -35,8 +33,6 @@ import envPaths from 'env-paths';
 import matter from 'gray-matter';
 import { mergeDeepLeft } from 'ramda';
 import SearchString from 'search-string';
-
-const SKILL_PATH_PATTERN = /skills\/.*\/SKILL.md$/;
 
 // Types
 type Skill = {
@@ -310,47 +306,62 @@ const SkillFrontmatterSchema = tool.schema.object({
  */
 function toolName(skillPath: string): string {
   return skillPath
-    .replace(/\/SKILL\.md$/, '') // Remove trailing /SKILL.md
     .split(sep)
     .join('_')
+    .replace(/SKILL\.md$/, '') // Remove trailing /SKILL.md or \SKILL.md
     .replace(/-/g, '_'); // Replace hyphens with underscores
 }
 
+type DiscoveredSkillPath = {
+  basePath: string;
+  absolutePath: string;
+};
+
 async function findSkillPaths(basePaths: string | string[]) {
   const basePathsArray = Array.isArray(basePaths) ? basePaths : [basePaths];
+  const glob = new Bun.Glob('**/SKILL.md');
+  const skills: DiscoveredSkillPath[] = [];
   try {
-    const paths: string[] = [];
-
     for (const basePath of basePathsArray) {
-      const stat = await lstat(basePath).catch(() => null);
-      if (!stat?.isDirectory()) {
-        continue;
+      for await (const skill of glob.scan({
+        cwd: basePath,
+        absolute: true,
+        onlyFiles: true,
+        followSymlinks: true,
+      })) {
+        skills.push({
+          basePath,
+          absolutePath: skill,
+        });
       }
-      paths.push(basePath);
     }
-
-    const patterns = paths.map((basePath) => join(basePath, '**/SKILL.md'));
-    const matches = await fsPromises.glob(patterns);
-    return matches;
-  } catch {
-    return [];
+  } catch (error) {
+    //
+    console.error(
+      `❌ Error finding skill paths:`,
+      error instanceof Error ? error.message : String(error)
+    );
+    //
   }
+
+  return skills;
 }
 
 /**
  * Parse a SKILL.md file and return structured skill data
  * Returns null if parsing fails (with error logging)
  */
-async function parseSkill(skillPath: string): Promise<Skill | null> {
+async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null> {
   try {
-    const relativePath = skillPath.match(SKILL_PATH_PATTERN)?.[0];
+    const relativePath = skillPath.absolutePath.replace(skillPath.basePath + sep, '');
+
     if (!relativePath) {
       console.error(`❌ Skill path does not match expected pattern: ${skillPath}`);
       return null;
     }
 
     // Read file
-    const content = await Bun.file(skillPath).text();
+    const content = await Bun.file(skillPath.absolutePath).text();
 
     // Parse YAML frontmatter
     const parsed = matter(content);
@@ -358,7 +369,7 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
     // Validate frontmatter schema
     const frontmatter = SkillFrontmatterSchema.safeParse(parsed.data);
     if (!frontmatter.success) {
-      console.error(`❌ Invalid frontmatter in ${skillPath}:`);
+      console.error(`❌ Invalid frontmatter in ${skillPath.absolutePath}:`);
       frontmatter.error.flatten().formErrors.forEach((err) => {
         console.error(`   - ${err}`);
       });
@@ -366,10 +377,10 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
     }
 
     // Validate name matches directory
-    const skillDir = basename(dirname(skillPath));
+    const skillDir = basename(dirname(skillPath.absolutePath));
     if (frontmatter.data.name !== skillDir) {
       console.error(
-        `❌ Name mismatch in ${skillPath}:`,
+        `❌ Name mismatch in ${skillPath.absolutePath}:`,
         `\n   Frontmatter name: "${frontmatter.data.name}"`,
         `\n   Directory name: "${skillDir}"`,
         `\n   Fix: Update the 'name' field in SKILL.md to match the directory name`
@@ -383,16 +394,16 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
       allowedTools: frontmatter.data['allowed-tools'],
       content: parsed.content.trim(),
       description: frontmatter.data.description,
-      fullPath: dirname(skillPath),
+      fullPath: dirname(skillPath.absolutePath),
       toolName: toolName(relativePath),
       license: frontmatter.data.license,
       metadata: frontmatter.data.metadata,
       name: frontmatter.data.name,
-      path: skillPath,
+      path: skillPath.absolutePath,
     };
   } catch (error) {
     console.error(
-      `❌ Error parsing skill ${skillPath}:`,
+      `❌ Error parsing skill ${skillPath.absolutePath}:`,
       error instanceof Error ? error.message : String(error)
     );
     return null;
@@ -631,10 +642,10 @@ async function createSkillRegistry(
   const byName = createSkillRegistryController();
 
   // Find all SKILL.md files recursively
-  const matches = await findSkillPaths(config.basePaths);
+  const discovered = await findSkillPaths(config.basePaths);
   const dupes: string[] = [];
 
-  for await (const match of matches) {
+  for await (const match of discovered) {
     const skill = await parseSkill(match);
 
     if (!skill) {
@@ -686,9 +697,9 @@ async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
   const base = {
     debug: false,
     basePaths: [
-      join(os.homedir(), '.opencode/skills'), // Lowest priority: Non standard user config
+      join(os.homedir(), '.opencode', 'skills'), // Lowest priority: Non standard user config
       join(OpenCodePaths.config, 'skills'), // Lowest priority: Standard User Config (windows)
-      join(ctx.directory, '.opencode/skills'), // Highest priority: Project-local
+      join(ctx.directory, '.opencode', 'skills'), // Highest priority: Project-local
     ],
   };
 
