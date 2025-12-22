@@ -9,22 +9,37 @@ echo "Publishing to npm"
 echo " > with tag: ${usage_tag}..."
 echo " > npm version: $(npm --version)"
 
+# For 'next' tag, bump version to a prerelease to avoid conflicts
+if [ "${usage_tag}" = "next" ]; then
+	# Count commits since last tag for a semantic build number
+	LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+	if [ -n "$LAST_TAG" ]; then
+		BUILD_NUMBER=$(git rev-list "${LAST_TAG}..HEAD" --count)
+	else
+		BUILD_NUMBER=$(git rev-list HEAD --count)
+	fi
+	CURRENT_VERSION=$(jq -r '.version' package.json)
+	PRERELEASE_VERSION="$(semver get release "$CURRENT_VERSION")-next.${BUILD_NUMBER}"
+	echo " > bumping version: ${CURRENT_VERSION} -> ${PRERELEASE_VERSION}"
+	npm version "${PRERELEASE_VERSION}" --no-git-tag-version --allow-same-version
+fi
+
 # Determine if we should use provenance
 # Only enable in CI environments with OIDC support
 PROVENANCE_FLAG=""
 if [ -z "$GITHUB_ACTIONS" ]; then
-  # Local development: disable provenance (fails without CI provider context)
-  PROVENANCE_FLAG="--no-provenance"
-  echo " > provenance: disabled (local environment)"
+	# Local development: disable provenance (fails without CI provider context)
+	PROVENANCE_FLAG="--no-provenance"
+	echo " > provenance: disabled (local environment)"
 else
-  # GitHub Actions: enable provenance (OIDC will handle it automatically)
-  echo " > provenance: enabled (GitHub Actions with OIDC)"
+	# GitHub Actions: enable provenance (OIDC will handle it automatically)
+	echo " > provenance: enabled (GitHub Actions with OIDC)"
 fi
 
 # Publish directly from source (allows provenance generation in CI)
 npm publish \
-  --access public \
-  --tag "${usage_tag}" \
-  $PROVENANCE_FLAG
+	--access public \
+	--tag "${usage_tag}" \
+	$PROVENANCE_FLAG
 
 echo "Published successfully!"
