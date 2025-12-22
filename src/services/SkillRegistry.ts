@@ -152,8 +152,9 @@ function inferResourceType(filePath: string): string {
  */
 function toolName(skillPath: string): string {
   return skillPath
-    .split(sep)
     .replace(/SKILL\.md$/, '') // Remove trailing SKILL.md
+    .split(sep)
+    .filter((part) => part.length > 0) // Remove empty parts
     .join('_')
     .replace(/-/g, '_'); // Replace hyphens with underscores
 }
@@ -164,8 +165,13 @@ function toolName(skillPath: string): string {
  */
 async function parseSkill(skillPath: string): Promise<Skill | null> {
   try {
-    const relativePath = skillPath.match(SKILL_PATH_PATTERN)?.[0];
-    if (!relativePath) {
+    // Extract relative path using path operations for cross-platform reliability
+    // This is more robust than regex matching for path comparisons
+    const relativePath = skillPath.includes('skills')
+      ? skillPath.substring(skillPath.indexOf('skills'))
+      : skillPath;
+
+    if (!SKILL_PATH_PATTERN.test(relativePath)) {
       console.error(`❌ Skill path does not match expected pattern: ${skillPath}`);
       return null;
     }
@@ -187,12 +193,12 @@ async function parseSkill(skillPath: string): Promise<Skill | null> {
     }
 
     // Validate name matches directory
-    const skillDir = basename(dirname(skillPath));
-    if (frontmatter.data.name !== skillDir) {
+    const skillDirName = basename(dirname(skillPath));
+    if (frontmatter.data.name !== skillDirName) {
       console.error(
         `❌ Name mismatch in ${skillPath}:`,
         `\n   Frontmatter name: "${frontmatter.data.name}"`,
-        `\n   Directory name: "${skillDir}"`,
+        `\n   Directory name: "${skillDirName}"`,
         `\n   Fix: Update the 'name' field in SKILL.md to match the directory name`
       );
       return null;
@@ -262,10 +268,10 @@ async function findSkillPaths(basePaths: string | string[]): Promise<string[]> {
   const basePathsArray = Array.isArray(basePaths) ? basePaths : [basePaths];
   const results: string[] = [];
 
-  try {
-    const glob = new Bun.Glob('**/SKILL.md');
+  const glob = new Bun.Glob('**/SKILL.md');
 
-    for (const basePath of basePathsArray) {
+  for (const basePath of basePathsArray) {
+    try {
       const stat = await lstat(basePath).catch(() => null);
       if (!stat?.isDirectory()) {
         continue;
@@ -274,10 +280,14 @@ async function findSkillPaths(basePaths: string | string[]): Promise<string[]> {
       for await (const match of glob.scan({ cwd: basePath, absolute: true })) {
         results.push(match);
       }
+    } catch (error) {
+      console.error(
+        `❌ Error scanning skill path ${basePath}:`,
+        error instanceof Error ? error.message : String(error)
+      );
+      continue;
     }
-
-    return results;
-  } catch {
-    return [];
   }
+
+  return results;
 }
