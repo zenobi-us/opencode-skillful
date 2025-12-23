@@ -40,8 +40,6 @@ import { createFindSkillsTool } from './tools/SkillFinder';
 const OpenCodePaths = envPaths('opencode', { suffix: '' });
 
 async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
-  // const config = await ctx.client.config.get();
-  // const resolved = config.data.plugins?.find(skill => skill.name === "opencode-skills");
   const base = {
     debug: false,
     basePaths: [

@@ -155,10 +155,11 @@ function inferResourceType(filePath: string): string {
  */
 function toolName(skillPath: string): string {
   return skillPath
+    .replace(/SKILL\.md$/, '')
     .split(sep)
+    .filter(Boolean)
     .join('_')
-    .replace(/SKILL\.md$/, '') // Remove trailing /SKILL.md or \SKILL.md
-    .replace(/-/g, '_'); // Replace hyphens with underscores
+    .replace(/-/g, '_');
 }
 
 /**
