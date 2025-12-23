@@ -153,10 +153,10 @@ Load one or more skills into the chat context.
 
 **Features:**
 
-- Injects skill metadata as XML markup with:
-  - Skill scripts available via `skill_exec(skillname, scriptname, ...arguments)`
+- Injects skill metadata and content with:
   - Skill resources available via `skill_resource(skillname, resourcename)`
   - Base directory context for relative path resolution
+  - Full skill content formatted as Markdown for easy reading
 
 ### `skill_resource`
 
