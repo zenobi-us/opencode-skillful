@@ -1,6 +1,6 @@
 import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
 import * as Bun from 'bun';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import type { SkillRegistryManager } from '../types';
 import { createInstructionInjector } from './SkillUser';
 
@@ -28,7 +28,17 @@ export function createToolResourceReader(
         throw new Error(`Skill not found: ${args.skill_name}`);
       }
 
-      const resourcePath = join(skill.fullPath, args.relative_path);
+      const resourcePath = resolve(join(skill.fullPath, args.relative_path));
+      const skillFullPathResolved = resolve(skill.fullPath);
+
+      // Prevent path traversal attacks
+      if (
+        !resourcePath.startsWith(skillFullPathResolved + '/') &&
+        resourcePath !== skillFullPathResolved
+      ) {
+        throw new Error(`Access denied: path traversal detected for "${args.relative_path}"`);
+      }
+
       try {
         const content = await Bun.file(resourcePath).text();
 

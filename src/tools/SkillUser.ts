@@ -2,6 +2,18 @@ import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@
 import type { Skill, SkillRegistryManager } from '../types';
 
 /**
+ * Escape XML special characters to prevent injection
+ */
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
  * Tool to use (load) one or more skills
  */
 
@@ -74,27 +86,32 @@ export async function loadSkill(skill: Skill, options: { ctx: PluginInput; sessi
     sessionId: options.sessionID,
   });
   try {
-    const skillScripts = skill.scripts.map((skill) => `<Script path="${skill.path}" />`).join('\n');
+    const skillScripts = skill.scripts
+      .map((script) => `<Script path="${escapeXml(script.path)}" />`)
+      .join('\n');
     const skillResources = skill.resources
-      .map((resource) => `<Resource path="${resource.path}" type="${resource.mimetype}" />`)
+      .map(
+        (resource) =>
+          `<Resource path="${escapeXml(resource.path)}" type="${escapeXml(resource.mimetype)}" />`
+      )
       .join('\n');
 
     await sendPrompt(
-      `<Skill name="${skill.name}" description="${skill.description}" baseDirectory="${skill.fullPath}">
-        <SkillUsage>
-Skill scripts can be invoked via "skill_exec(skillname, scriptname, ...arguments)"
+      `<Skill name="${escapeXml(skill.name)}" description="${escapeXml(skill.description)}" baseDirectory="${escapeXml(skill.fullPath)}">
+         <SkillUsage>
 Skill resources can be accessed via "skill_resource(skillname, resourcename)"
-        </SkillUsage>
-        <SkillScripts>${skillScripts}</SkillScripts>
-        <SkillResources>${skillResources}</SkillResources>
-        <SkillContent>${skill.content}</SkillContent>
-      </Skill>`,
+         </SkillUsage>
+         <SkillScripts>${skillScripts}</SkillScripts>
+         <SkillResources>${skillResources}</SkillResources>
+         <SkillContent>${escapeXml(skill.content)}</SkillContent>
+       </Skill>`,
       {
         sessionId: options.sessionID,
       }
     );
   } catch (error) {
-    await sendPrompt(`Error loading skill "${skill.name}": ${(error as Error).message}`, {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    await sendPrompt(`Error loading skill "${escapeXml(skill.name)}": ${escapeXml(errorMsg)}`, {
       sessionId: options.sessionID,
     });
   }

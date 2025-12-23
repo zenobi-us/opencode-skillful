@@ -208,6 +208,12 @@ describe('SkillRegistry - Path Handling Fixes', () => {
       expect(extractRelativePath('C:\\Users\\test\\skills\\my-skill\\SKILL.md')).toBe(
         'skills\\my-skill\\SKILL.md'
       );
+      // Also test the path is handled correctly when normalized
+      const result = extractRelativePath('C:\\Users\\test\\skills\\my-skill\\SKILL.md').replace(
+        /\\/g,
+        '/'
+      );
+      expect(result).toBe('skills/my-skill/SKILL.md');
     });
 
     it('should validate path structure after extraction', () => {
