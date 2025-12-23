@@ -1,6 +1,5 @@
 import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
 import type { Skill, SkillRegistryManager } from '../types';
-import { createShellExecutor } from '../services/SkillShellProcessor';
 
 /**
  * Tool to use (load) one or more skills
@@ -67,9 +66,6 @@ export function createUseSkillsTool(
 }
 /**
  * Load a single skill into the chat
- *
- * Processes any shell commands (!`command`) in the skill content before sending.
- * Shell commands execute in parallel and their output replaces the command syntax.
  */
 export async function loadSkill(skill: Skill, options: { ctx: PluginInput; sessionID: string }) {
   const sendPrompt = createInstructionInjector(options.ctx);
@@ -78,9 +74,6 @@ export async function loadSkill(skill: Skill, options: { ctx: PluginInput; sessi
     sessionId: options.sessionID,
   });
   try {
-    // Process shell commands in skill content (!`command` syntax)
-    const processShellCommands = createShellExecutor(skill.content);
-    const processedContent = await processShellCommands();
     const skillScripts = skill.scripts.map((skill) => `<Script path="${skill.path}" />`).join('\n');
     const skillResources = skill.resources
       .map((resource) => `<Resource path="${resource.path}" type="${resource.mimetype}" />`)
@@ -94,7 +87,7 @@ Skill resources can be accessed via "skill_resource(skillname, resourcename)"
         </SkillUsage>
         <SkillScripts>${skillScripts}</SkillScripts>
         <SkillResources>${skillResources}</SkillResources>
-        <SkillContent>${processedContent}</SkillContent>
+        <SkillContent>${skill.content}</SkillContent>
       </Skill>`,
       {
         sessionId: options.sessionID,

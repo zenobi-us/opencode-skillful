@@ -145,7 +145,7 @@ Search for skills using natural query syntax.
 
 ### `skill_use`
 
-Load one or more skills into the chat context with full processing.
+Load one or more skills into the chat context.
 
 **Parameters:**
 
@@ -153,8 +153,6 @@ Load one or more skills into the chat context with full processing.
 
 **Features:**
 
-- Processes shell commands in skill content using `!`command`` syntax
-- Shell commands execute in parallel; output replaces command syntax
 - Injects skill metadata as XML markup with:
   - Skill scripts available via `skill_exec(skillname, scriptname, ...arguments)`
   - Skill resources available via `skill_resource(skillname, resourcename)`

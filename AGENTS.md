@@ -38,7 +38,7 @@
 
 ### Error Handling
 
-- Check error type before accessing error properties: `error instanceof Error ? error.message.toString() : String(error)`
+- Check error type before accessing error properties: `error instanceof Error ? error.message : String(error)`
 - Log errors with `[ERROR]` prefix for consistency
 - Always provide error context when recording output
 
