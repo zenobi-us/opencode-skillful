@@ -171,7 +171,7 @@ async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null>
     const relativePath = skillPath.absolutePath.replace(skillPath.basePath + sep, '');
 
     if (!relativePath) {
-      console.error(`❌ Skill path does not match expected pattern: ${skillPath}`);
+      console.error(`❌ Skill path does not match expected pattern: ${skillPath.absolutePath}`);
       return null;
     }
 
