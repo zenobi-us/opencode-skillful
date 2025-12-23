@@ -207,9 +207,10 @@ async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null>
     const skillFullPath = dirname(skillPath.absolutePath);
 
     // Scan for scripts and resources
-    const [scriptPaths, resourcePaths] = await Promise.all([
+    const [scriptPaths, referencePaths, assetPaths] = await Promise.all([
       listSkillFiles(skillFullPath, 'scripts'),
-      listSkillFiles(skillFullPath, 'resources'),
+      listSkillFiles(skillFullPath, 'references'),
+      listSkillFiles(skillFullPath, 'assets'),
     ]);
 
     return {
@@ -223,7 +224,8 @@ async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null>
       name: frontmatter.data.name,
       path: skillPath.absolutePath,
       scripts: scriptPaths.map((p) => ({ path: p })),
-      resources: resourcePaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
+      references: referencePaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
+      assets: assetPaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
     };
   } catch (error) {
     console.error(

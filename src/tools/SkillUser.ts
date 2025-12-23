@@ -13,6 +13,10 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;');
 }
 
+const unorderedList = <T extends { path: string }>(items: T[], labelFn: (item: T) => string) => {
+  return items.map((item) => `- ${labelFn(item)} `).join('\n');
+};
+
 /**
  * Tool to use (load) one or more skills
  */
@@ -81,30 +85,27 @@ export function createUseSkillsTool(
  */
 export async function loadSkill(skill: Skill, options: { ctx: PluginInput; sessionID: string }) {
   const sendPrompt = createInstructionInjector(options.ctx);
-
   await sendPrompt(`The "${skill.name}" skill is loading\n${skill.name}`, {
     sessionId: options.sessionID,
   });
+
   try {
-    const skillScripts = skill.scripts
-      .map((script) => `<Script path="${escapeXml(script.path)}" />`)
-      .join('\n');
-    const skillResources = skill.resources
-      .map(
-        (resource) =>
-          `<Resource path="${escapeXml(resource.path)}" type="${escapeXml(resource.mimetype)}" />`
-      )
-      .join('\n');
+    const skillScripts = unorderedList(skill.scripts, (script) => `${script.path}`);
+    const skillReferences = unorderedList(
+      skill.references,
+      (reference) => `[${reference.mimetype}] ${reference.path} `
+    );
 
     await sendPrompt(
-      `<Skill name="${escapeXml(skill.name)}" description="${escapeXml(skill.description)}" baseDirectory="${escapeXml(skill.fullPath)}">
-         <SkillUsage>
-Skill resources can be accessed via "skill_resource(skillname, resourcename)"
-         </SkillUsage>
-         <SkillScripts>${skillScripts}</SkillScripts>
-         <SkillResources>${skillResources}</SkillResources>
-         <SkillContent>${escapeXml(skill.content)}</SkillContent>
-       </Skill>`,
+      `
+# ${skill.name}
+
+${skill.description}
+
+${!skillReferences ? '' : `## References\n\n${skillReferences}\n\n`}
+${!skillScripts ? '' : `## Scripts\n\n${skillScripts}\n\n`}
+${skill.content}
+`,
       {
         sessionId: options.sessionID,
       }
