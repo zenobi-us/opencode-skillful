@@ -121,7 +121,7 @@ ${skill.content}
 export function createInstructionInjector(ctx: PluginInput) {
   // Message 1: Skill loading header (silent insertion - no AI response)
   const sendPrompt = async (text: string, props: { sessionId: string }) => {
-    ctx.client.session.prompt({
+    await ctx.client.session.prompt({
       path: { id: props.sessionId },
       body: {
         noReply: true,

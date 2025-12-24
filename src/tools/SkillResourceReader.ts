@@ -1,8 +1,7 @@
 import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
-import * as Bun from 'bun';
-import { join, resolve } from 'path';
 import type { SkillRegistryManager } from '../types';
 import { createInstructionInjector } from './SkillUser';
+import { createSkillResourceResolver } from '../services/SkillResourceResolver';
 
 /**
  *  Tool to read a resource file from a skill's directory
@@ -13,6 +12,7 @@ export function createToolResourceReader(
   registry: SkillRegistryManager
 ): ToolDefinition {
   const sendPrompt = createInstructionInjector(ctx);
+  const skillResourceResolver = createSkillResourceResolver(registry);
 
   return tool({
     description:
@@ -22,38 +22,17 @@ export function createToolResourceReader(
       relative_path: tool.schema.string(),
     },
     execute: async (args, toolCtx: ToolContext) => {
-      // Try to find skill by toolName first, then by name (backward compat)
-      let skill = registry.byFQDN.get(args.skill_name) || registry.byName.get(args.skill_name);
-      if (!skill) {
-        throw new Error(`Skill not found: ${args.skill_name}`);
-      }
+      const resource = await skillResourceResolver({
+        skill_name: args.skill_name,
+      });
 
-      const resourcePath = resolve(join(skill.fullPath, args.relative_path));
-      const skillFullPathResolved = resolve(skill.fullPath);
+      // Inject content silently
+      await sendPrompt(
+        `Resource loaded from skill "${args.skill_name}": ${args.relative_path}\n\n${resource}`,
+        { sessionId: toolCtx.sessionID }
+      );
 
-      // Prevent path traversal attacks
-      if (
-        !resourcePath.startsWith(skillFullPathResolved + '/') &&
-        resourcePath !== skillFullPathResolved
-      ) {
-        throw new Error(`Access denied: path traversal detected for "${args.relative_path}"`);
-      }
-
-      try {
-        const content = await Bun.file(resourcePath).text();
-
-        // Inject content silently
-        await sendPrompt(
-          `Resource loaded from skill "${skill.name}": ${args.relative_path}\n\n${content}`,
-          { sessionId: toolCtx.sessionID }
-        );
-
-        return `Resource "${args.relative_path}" from skill "${skill.name}" has been loaded successfully.`;
-      } catch (error) {
-        throw new Error(
-          `Failed to read resource at ${resourcePath}: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
+      return `Resource "${args.relative_path}" from skill "${args.skill_name}" has been loaded successfully.`;
     },
   });
 }

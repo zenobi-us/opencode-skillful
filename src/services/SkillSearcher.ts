@@ -1,5 +1,13 @@
 import SearchString from 'search-string';
-import type { Skill, ParsedSkillQuery, TextSegment, SkillRank, SkillSearchResult } from '../types';
+import type {
+  Skill,
+  ParsedSkillQuery,
+  TextSegment,
+  SkillRank,
+  SkillSearchResult,
+  SkillRegistryManager,
+} from '../types';
+import { normalizePathQuery, stripSkillsPrefix } from '../identifiers';
 
 /**
  * SkillSearcher - Natural Language Query Parser for Skills
@@ -15,8 +23,16 @@ import type { Skill, ParsedSkillQuery, TextSegment, SkillRank, SkillSearchResult
 export class SkillSearcher {
   private skills: Skill[];
 
-  constructor(skills: Skill[]) {
+  private constructor(skills: Skill[]) {
     this.skills = skills;
+  }
+
+  static fromRegistry(registry: SkillRegistryManager): SkillSearcher {
+    const allSkills = Array.from(registry.byName.registry.values()).sort((a, b) =>
+      a.toolName.localeCompare(b.toolName)
+    );
+    const searcher = new SkillSearcher(allSkills);
+    return searcher;
   }
 
   /**
@@ -114,7 +130,32 @@ export class SkillSearcher {
    * Execute a search query and return ranked results
    */
   public search(queryString: string): SkillSearchResult {
+    // List all skills if query is empty or "*"
+    if (queryString === '' || queryString === '*') {
+      return {
+        matches: this.skills,
+        totalMatches: this.skills.length,
+        feedback: `✅ Listing all ${this.skills.length} skills`,
+        query: this.parseQuery(queryString),
+      };
+    }
     const query = this.parseQuery(queryString);
+
+    // Try path prefix matching first
+    const normalizedQuery = normalizePathQuery(queryString).toLowerCase();
+    const prefixMatches = this.skills.filter((skill) => {
+      const shortName = stripSkillsPrefix(skill.toolName).toLowerCase();
+      return shortName.startsWith(normalizedQuery);
+    });
+
+    if (prefixMatches.length > 0) {
+      return {
+        matches: prefixMatches,
+        totalMatches: prefixMatches.length,
+        feedback: `✅ Found ${prefixMatches.length} skills matching path prefix "**${queryString}**"`,
+        query,
+      };
+    }
 
     if (query.include.length === 0) {
       return {
