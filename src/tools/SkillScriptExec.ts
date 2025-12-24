@@ -7,20 +7,20 @@
  * - Returns execution results (stdout, stderr, exit code)
  */
 
-import { createSkillResourceResolver } from '../services/SkillResourceResolver';
 import { PluginInput, tool, ToolContext } from '@opencode-ai/plugin';
-import { createInstructionInjector } from './SkillUser';
-import { SkillRegistryManager } from '../types';
+import { createInstructionInjector } from '../services/OpenCodeChat';
+import { SkillProvider } from '../types';
+import { createScriptResourceExecutor } from '../services/ScriptResourceExecutor';
 
 /**
  * Creates a tool function that executes scripts from skills
  */
-export function createSkillScriptExecTool(ctx: PluginInput, registry: SkillRegistryManager) {
+export function createSkillScriptExecTool(ctx: PluginInput, provider: SkillProvider) {
   const sendPrompt = createInstructionInjector(ctx);
-  const scriptResourceExecutor = createScriptResourceExecutor({ registry });
+  const scriptResourceExecutor = createScriptResourceExecutor(provider);
 
   return tool({
-    description: '',
+    description: 'Execute scripts from skill resources with arguments',
     args: {
       skill_name: tool.schema.string(),
       relative_path: tool.schema.string(),
@@ -42,19 +42,4 @@ export function createSkillScriptExecTool(ctx: PluginInput, registry: SkillRegis
       return execResult.text();
     },
   });
-}
-
-export function createScriptResourceExecutor(args: { registry: SkillRegistryManager }) {
-  const skillResourceResolver = createSkillResourceResolver(args.registry);
-
-  return async function (args: { skill_name: string; relative_path: string; args?: string[] }) {
-    const script = await skillResourceResolver({
-      skill_name: args.skill_name,
-      type: 'script',
-      relative_path: args.relative_path,
-    });
-
-    const result = await Bun.$`${script.absolute_path} ${args.args ? args.args.join(' ') : ''}`;
-    return result;
-  };
 }

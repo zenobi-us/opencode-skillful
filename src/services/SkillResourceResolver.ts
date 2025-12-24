@@ -1,6 +1,6 @@
 import * as Bun from 'bun';
 import { resolve, join, sep } from 'path';
-import type { SkillRegistryManager } from '../types';
+import type { Skill, SkillProvider } from '../types';
 
 function resolveSkillResourcePath(args: {
   skill: Skill;
@@ -18,7 +18,7 @@ function resolveSkillResourcePath(args: {
     );
   }
 }
-export function createSkillResourceResolver(registry: SkillRegistryManager) {
+export function createSkillResourceResolver(provider: SkillProvider) {
   return async (args: {
     skill_name: string;
     type: 'script' | 'asset' | 'reference';
@@ -26,9 +26,10 @@ export function createSkillResourceResolver(registry: SkillRegistryManager) {
   }): Promise<{
     absolute_path: string;
     content: string;
+    mimeType: string;
   }> => {
     // Try to find skill by toolName first, then by name (backward compat)
-    const skill = registry.byFQDN.get(args.skill_name) || registry.byName.get(args.skill_name);
+    const skill = provider.registry.get(args.skill_name);
     if (!skill) {
       throw new Error(`Skill not found: ${args.skill_name}`);
     }
@@ -40,10 +41,14 @@ export function createSkillResourceResolver(registry: SkillRegistryManager) {
     });
 
     try {
-      const contents = await Bun.file(resourcePath).text();
+      const file = Bun.file(resourcePath);
+      const contents = await file.text();
+      const mimeType = file.type || 'application/octet-stream';
+
       return {
         absolute_path: resourcePath,
         content: contents,
+        mimeType,
       };
     } catch (error) {
       throw new Error(

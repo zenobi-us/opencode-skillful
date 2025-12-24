@@ -76,18 +76,14 @@ export type SkillRegistry = Map<string, Skill>;
  * Skill registry controller interface
  */
 export type SkillRegistryController = {
-  registry: SkillRegistry;
+  skills: Skill[];
+  ids: string[];
   has: (_key: string) => boolean;
   get: (_key: string) => Skill | undefined;
   add: (_key: string, _skill: Skill) => void;
-  search: (..._args: string[]) => Skill[];
 };
 
-/**
- * Skill registry manager interface
- */
-export type SkillRegistryManager = {
-  byFQDN: SkillRegistryController;
-  byName: SkillRegistryController;
-  search: (_query: string) => Skill[];
+export type SkillProvider = {
+  registry: SkillRegistryController;
+  searcher: (query: string) => SkillSearchResult;
 };

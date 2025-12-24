@@ -1,17 +1,6 @@
 import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
-import type { Skill, SkillRegistryManager } from '../types';
-
-/**
- * Escape XML special characters to prevent injection
- */
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+import type { Skill, SkillProvider, SkillRegistry } from '../types';
+import { createInstructionInjector } from '../services/OpenCodeChat';
 
 const unorderedList = <T extends { path: string }>(items: T[], labelFn: (item: T) => string) => {
   return items.map((item) => `- ${labelFn(item)} `).join('\n');
@@ -21,42 +10,8 @@ const unorderedList = <T extends { path: string }>(items: T[], labelFn: (item: T
  * Tool to use (load) one or more skills
  */
 
-export function createUseSkillsTool(
-  ctx: PluginInput,
-  registry: SkillRegistryManager
-): ToolDefinition {
-  /**
-   * Load multiple skills into the chat
-   */
-  async function loadSkills(
-    skillNames: string[],
-    manager: SkillRegistryManager,
-    options: { ctx: PluginInput; sessionID: string }
-  ) {
-    const loaded: string[] = [];
-    const notFound: string[] = [];
-
-    for (const skillName of skillNames) {
-      // Try to find skill by toolName first (primary key), then by name (backward compat)
-      let skill = manager.byFQDN.get(skillName);
-      if (!skill) {
-        skill = manager.byName.get(skillName);
-      }
-
-      if (!skill) {
-        notFound.push(skillName);
-        continue;
-      }
-
-      await loadSkill(skill, {
-        ctx: options.ctx,
-        sessionID: options.sessionID,
-      });
-      loaded.push(skill.toolName);
-    }
-
-    return { loaded, notFound };
-  }
+export function createUseSkillsTool(ctx: PluginInput, provider: SkillProvider): ToolDefinition {
+  const skillLoader = createSkillLoader(provider);
 
   return tool({
     description:
@@ -67,37 +22,28 @@ export function createUseSkillsTool(
         .min(1, 'Must provide at least one skill name'),
     },
     execute: async (args, toolCtx: ToolContext) => {
-      const response = await loadSkills(args.skill_names, registry, {
-        ctx,
-        sessionID: toolCtx.sessionID,
+      const sendPrompt = createInstructionInjector(ctx);
+      const results = await skillLoader(args.skill_names, async (content: string) => {
+        sendPrompt(content, { sessionId: toolCtx.sessionID });
       });
 
-      let result = `Loaded ${response.loaded.length} skill(s): ${response.loaded.join(', ')}`;
-      if (response.notFound.length > 0) {
-        result += `\n\nSkills not found: ${response.notFound.join(', ')}`;
-      }
-      return result;
+      return results;
     },
   });
 }
-/**
- * Load a single skill into the chat
- */
-export async function loadSkill(skill: Skill, options: { ctx: PluginInput; sessionID: string }) {
-  const sendPrompt = createInstructionInjector(options.ctx);
-  await sendPrompt(`The "${skill.name}" skill is loading\n${skill.name}`, {
-    sessionId: options.sessionID,
-  });
 
-  try {
+function createSkillLoader(registry: SkillRegistry) {
+  /**
+   * Load a single skill into the chat
+   */
+  async function render(skill: Skill) {
     const skillScripts = unorderedList(skill.scripts, (script) => `${script.path}`);
     const skillReferences = unorderedList(
       skill.references,
       (reference) => `[${reference.mimetype}] ${reference.path} `
     );
 
-    await sendPrompt(
-      `
+    const content = `
 # ${skill.name}
 
 ${skill.description}
@@ -105,29 +51,33 @@ ${skill.description}
 ${!skillReferences ? '' : `## References\n\n${skillReferences}\n\n`}
 ${!skillScripts ? '' : `## Scripts\n\n${skillScripts}\n\n`}
 ${skill.content}
-`,
-      {
-        sessionId: options.sessionID,
-      }
-    );
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    await sendPrompt(`Error loading skill "${escapeXml(skill.name)}": ${escapeXml(errorMsg)}`, {
-      sessionId: options.sessionID,
-    });
+`;
+    return content;
   }
-}
 
-export function createInstructionInjector(ctx: PluginInput) {
-  // Message 1: Skill loading header (silent insertion - no AI response)
-  const sendPrompt = async (text: string, props: { sessionId: string }) => {
-    await ctx.client.session.prompt({
-      path: { id: props.sessionId },
-      body: {
-        noReply: true,
-        parts: [{ type: 'text', text }],
-      },
-    });
-  };
-  return sendPrompt;
+  /**
+   * Load multiple skills into the chat
+   */
+  async function loadSkills(skillNames: string[], onLoad: (content: string) => Promise<void>) {
+    const loaded: string[] = [];
+    const notFound: string[] = [];
+
+    for (const skillName of skillNames) {
+      // Try to find skill by toolName first (primary key), then by name (backward compat)
+
+      const skill = registry.get(skillName);
+
+      if (!skill) {
+        notFound.push(skillName);
+        continue;
+      }
+
+      await onLoad(render(skill));
+      loaded.push(skill.toolName);
+    }
+
+    return summary(JSON.stringify({ loaded, notFound }));
+  }
+
+  return loadSkills;
 }

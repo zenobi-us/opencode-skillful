@@ -1,7 +1,7 @@
 import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
-import type { SkillRegistryManager } from '../types';
-import { createInstructionInjector } from './SkillUser';
+import { createInstructionInjector } from '../services/OpenCodeChat';
 import { createSkillResourceResolver } from '../services/SkillResourceResolver';
+import { SkillProvider } from '../types';
 
 /**
  *  Tool to read a resource file from a skill's directory
@@ -9,10 +9,10 @@ import { createSkillResourceResolver } from '../services/SkillResourceResolver';
 
 export function createToolResourceReader(
   ctx: PluginInput,
-  registry: SkillRegistryManager
+  provider: SkillProvider
 ): ToolDefinition {
   const sendPrompt = createInstructionInjector(ctx);
-  const skillResourceResolver = createSkillResourceResolver(registry);
+  const skillResourceResolver = createSkillResourceResolver(provider);
 
   return tool({
     description:
@@ -24,15 +24,31 @@ export function createToolResourceReader(
     execute: async (args, toolCtx: ToolContext) => {
       const resource = await skillResourceResolver({
         skill_name: args.skill_name,
+        type: 'reference',
+        relative_path: args.relative_path,
       });
 
       // Inject content silently
       await sendPrompt(
-        `Resource loaded from skill "${args.skill_name}": ${args.relative_path}\n\n${resource}`,
+        `
+---
+skill: ${args.skill_name}
+resource: ${args.relative_path}
+mimeType: ${resource.mimeType}
+---
+
+${resource.content}
+`,
         { sessionId: toolCtx.sessionID }
       );
 
-      return `Resource "${args.relative_path}" from skill "${args.skill_name}" has been loaded successfully.`;
+      return `
+Load Skill Resource
+
+  skill: ${args.skill_name}
+  resource: ${args.relative_path}
+  type: ${resource.mimeType}
+`;
     },
   });
 }

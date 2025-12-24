@@ -1,6 +1,5 @@
 import { type PluginInput, type ToolDefinition, tool } from '@opencode-ai/plugin';
-import { SkillSearcher } from '../services/SkillSearcher';
-import type { SkillRegistryManager, SkillSearchResult } from '../types';
+import type { SkillProvider, SkillSearchResult } from '../types';
 
 /**
  * Tool to search for skills using natural language query syntax
@@ -16,12 +15,7 @@ import type { SkillRegistryManager, SkillSearchResult } from '../types';
  * - "experts/data-ai" → all skills under that subtree
  * - "*" or empty → list all skills
  */
-export function createFindSkillsTool(
-  _ctx: PluginInput,
-  registry: SkillRegistryManager
-): ToolDefinition {
-  const skillfinder = SkillSearcher.fromRegistry(registry);
-
+export function createFindSkillsTool(_ctx: PluginInput, provider: SkillProvider): ToolDefinition {
   return tool({
     description:
       "Search for skills using natural query syntax. Supports path prefixes (e.g., 'experts', 'superpowers/writing'), negation (-term), quoted phrases, and free text. Use '*' to list all skills.",
@@ -29,7 +23,7 @@ export function createFindSkillsTool(
       query: tool.schema.string(),
     },
     execute: async (args) => {
-      const result = skillfinder.search(args.query);
+      const result = provider.searcher(args.query);
       return skillResultsFormatter(result);
     },
   });

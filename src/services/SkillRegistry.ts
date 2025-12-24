@@ -1,11 +1,5 @@
 import { PluginInput, tool } from '@opencode-ai/plugin';
-import {
-  PluginConfig,
-  Skill,
-  SkillRegistry,
-  SkillRegistryController,
-  SkillRegistryManager,
-} from '../types';
+import { PluginConfig, Skill, SkillRegistry, SkillRegistryController } from '../types';
 
 import { dirname, basename, sep, join } from 'node:path';
 import { lstat } from 'node:fs/promises';
@@ -34,22 +28,16 @@ const SkillFrontmatterSchema = tool.schema.object({
 function createSkillRegistryController(): SkillRegistryController {
   const registry: SkillRegistry = new Map();
   return {
-    registry,
+    get skills() {
+      return Array.from(registry.values()).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    get ids() {
+      return Array.from(registry.keys()).sort();
+    },
     has: (key: string) => registry.has(key),
     get: (key: string) => registry.get(key),
     add: (key: string, skill: Skill) => {
       registry.set(key, skill);
-    },
-    search: (...args: string[]) => {
-      const results: Skill[] = [];
-      const query = args.map((a) => a.toLowerCase());
-      for (const skill of registry.values()) {
-        const haystack = `${skill.name} ${skill.description}`.toLowerCase();
-        if (query.every((q) => haystack.includes(q))) {
-          results.push(skill);
-        }
-      }
-      return results;
     },
   };
 }
@@ -60,16 +48,7 @@ function createSkillRegistryController(): SkillRegistryController {
 export async function createSkillRegistry(
   ctx: PluginInput,
   config: PluginConfig
-): Promise<SkillRegistryManager> {
-  ctx.client.tui.showToast({
-    body: {
-      variant: 'info',
-      title: `OpencodeSkillful`,
-      // hourglass emoji
-      message: '⏳ Loading skills...',
-    },
-  });
-
+): Promise<SkillRegistryController> {
   /**
    * Skill Registry Map
    *
@@ -80,8 +59,7 @@ export async function createSkillRegistry(
    * - Skills loaded from multiple base paths (last one wins)
    * - Stored as Map for metadata access by tool resource reader
    */
-  const byFQDN = createSkillRegistryController();
-  const byName = createSkillRegistryController();
+  const controller = createSkillRegistryController();
 
   // Find all SKILL.md files recursively
   const matches = await findSkillPaths(config.basePaths);
@@ -94,49 +72,18 @@ export async function createSkillRegistry(
       continue;
     }
 
-    if (byFQDN.has(skill.toolName)) {
+    if (controller.has(skill.toolName)) {
       dupes.push(skill.toolName);
       continue;
     }
-    byName.add(skill.name, skill);
-    byFQDN.add(skill.toolName, skill);
+    controller.add(skill.toolName, skill);
   }
 
   if (dupes.length) {
     console.warn(`⚠️  Duplicate skills detected (skipped): ${dupes.join(', ')}`);
   }
 
-  /**
-   * search both registries for matching skills
-   * then de-duplicate results
-   */
-  function search(query: string): Skill[] {
-    const resultsByName = byName.search(query);
-    const resultsByFQDN = byFQDN.search(query);
-
-    const allResults = [...resultsByName, ...resultsByFQDN];
-    const uniqueResultsMap: Map<string, Skill> = new Map();
-
-    for (const skill of allResults) {
-      uniqueResultsMap.set(skill.toolName, skill);
-    }
-
-    return Array.from(uniqueResultsMap.values());
-  }
-
-  ctx.client.tui.showToast({
-    body: {
-      variant: 'success',
-      title: `OpencodeSkillful`,
-      message: `✅ Loaded ${byFQDN.registry.size} skills from ${matches.length} files`,
-    },
-  });
-
-  return {
-    byName,
-    byFQDN,
-    search,
-  };
+  return controller;
 }
 
 /**

@@ -36,7 +36,7 @@ import { createSkillRegistry } from './services/SkillRegistry';
 import { createToolResourceReader } from './tools/SkillResourceReader';
 import { createUseSkillsTool } from './tools/SkillUser';
 import { createFindSkillsTool } from './tools/SkillFinder';
-import { createSkillScriptExectioner } from './tools/SkillScriptExec';
+import { createSkillScriptExecTool } from './tools/SkillScriptExec';
 
 const OpenCodePaths = envPaths('opencode', { suffix: '' });
 
@@ -63,7 +63,7 @@ export const SkillsPlugin: Plugin = async (ctx) => {
       skill_use: createUseSkillsTool(ctx, registry),
       skill_find: createFindSkillsTool(ctx, registry),
       skill_resource: createToolResourceReader(ctx, registry),
-      skill_exec: createSkillScriptExectioner(registry),
+      skill_exec: createSkillScriptExecTool(ctx, registry),
     },
   };
 };
