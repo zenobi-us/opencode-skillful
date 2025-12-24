@@ -1,0 +1,476 @@
+import { describe, it, expect } from 'vitest';
+import { parseQuery, rankSkill, shouldIncludeSkill, generateFeedback } from './SkillSearcher';
+import { mockSkill } from '../mocks';
+import type { Skill } from '../types';
+
+describe('parseQuery', () => {
+  it('should parse empty string', () => {
+    const result = parseQuery('');
+    expect(result.include).toHaveLength(0);
+    expect(result.exclude).toHaveLength(0);
+    expect(result.originalQuery).toBe('');
+    expect(result.hasExclusions).toBe(false);
+    expect(result.termCount).toBe(0);
+  });
+
+  it('should parse single positive term', () => {
+    const result = parseQuery('api');
+    expect(result.include).toContain('api');
+    expect(result.exclude).toHaveLength(0);
+    expect(result.originalQuery).toBe('api');
+    expect(result.hasExclusions).toBe(false);
+    expect(result.termCount).toBe(1);
+  });
+
+  it('should parse multiple positive terms', () => {
+    const result = parseQuery('git commit workflow');
+    expect(result.include).toEqual(['git', 'commit', 'workflow']);
+    expect(result.exclude).toHaveLength(0);
+    expect(result.hasExclusions).toBe(false);
+    expect(result.termCount).toBe(3);
+  });
+
+  it('should parse negative terms with minus prefix', () => {
+    const result = parseQuery('-python -deprecated');
+    expect(result.exclude).toContain('python');
+    expect(result.exclude).toContain('deprecated');
+    expect(result.include).toHaveLength(0);
+    expect(result.hasExclusions).toBe(true);
+  });
+
+  it('should parse mixed positive and negative terms', () => {
+    const result = parseQuery('api -python -legacy');
+    expect(result.include).toContain('api');
+    expect(result.exclude).toContain('python');
+    expect(result.exclude).toContain('legacy');
+    expect(result.hasExclusions).toBe(true);
+    expect(result.termCount).toBe(3);
+  });
+
+  it('should convert terms to lowercase', () => {
+    const result = parseQuery('API TESTING -PYTHON');
+    expect(result.include).toContain('api');
+    expect(result.include).toContain('testing');
+    expect(result.exclude).toContain('python');
+  });
+
+  it('should filter out empty terms', () => {
+    const result = parseQuery('   api   testing   ');
+    expect(result.include).toContain('api');
+    expect(result.include).toContain('testing');
+    expect(result.include).not.toContain('');
+  });
+
+  it('should handle quoted phrases', () => {
+    const result = parseQuery('"git commit" message');
+    expect(result.include.length).toBeGreaterThan(0);
+    expect(result.originalQuery).toBe('"git commit" message');
+  });
+
+  it('should preserve original query string', () => {
+    const queryString = 'Git Workflow -Deprecated';
+    const result = parseQuery(queryString);
+    expect(result.originalQuery).toBe(queryString);
+  });
+
+  it('should track term count including negations', () => {
+    const result = parseQuery('api gateway -python');
+    expect(result.termCount).toBe(3);
+  });
+
+  it('should handle only negation terms', () => {
+    const result = parseQuery('-old -deprecated');
+    expect(result.exclude).toHaveLength(2);
+    expect(result.include).toHaveLength(0);
+    expect(result.hasExclusions).toBe(true);
+  });
+
+  it('should handle special characters in terms', () => {
+    const result = parseQuery('node.js c++ @typescript');
+    expect(result.include.length).toBeGreaterThan(0);
+  });
+});
+
+describe('rankSkill', () => {
+  it('should give exact name match maximum score', () => {
+    const skill: Skill = mockSkill({
+      name: 'git',
+      description: 'version control',
+    });
+    const result = rankSkill(skill, ['git']);
+
+    expect(result.totalScore).toBe(13); // 1 name match * 3 + exact bonus 10
+    expect(result.nameMatches).toBe(1);
+    expect(result.descMatches).toBe(0);
+  });
+
+  it('should not give exact bonus for multi-term queries', () => {
+    const skill: Skill = mockSkill({
+      name: 'git',
+      description: 'version control',
+    });
+    const result = rankSkill(skill, ['git', 'control']);
+
+    expect(result.totalScore).toBe(4); // 1 name match * 3 + 1 desc match * 1, no bonus
+    expect(result.nameMatches).toBe(1);
+    expect(result.descMatches).toBe(1);
+  });
+
+  it('should score name matches higher than description matches', () => {
+    const skill: Skill = mockSkill({
+      name: 'git-commit',
+      description: 'writing guides',
+    });
+    const result = rankSkill(skill, ['git']);
+
+    expect(result.nameMatches).toBe(1);
+    expect(result.descMatches).toBe(0);
+    expect(result.totalScore).toBe(3); // 1 * 3 + 0 * 1
+  });
+
+  it('should count one match per term regardless of occurrences', () => {
+    const skill: Skill = mockSkill({
+      name: 'git-git-git-workflow',
+      description: 'patterns',
+    });
+    const result = rankSkill(skill, ['git']);
+
+    // Each term in query counts once if found (anywhere in name)
+    expect(result.nameMatches).toBe(1);
+    expect(result.descMatches).toBe(0);
+    expect(result.totalScore).toBe(3); // 1 * 3
+  });
+
+  it('should count description matches when term not in name', () => {
+    const skill: Skill = mockSkill({
+      name: 'workflow',
+      description: 'git patterns and git control',
+    });
+    const result = rankSkill(skill, ['git']);
+
+    // 'git' not in name, so checks description
+    expect(result.nameMatches).toBe(0);
+    expect(result.descMatches).toBe(1); // Counted once per term
+    expect(result.totalScore).toBe(1); // 1 * 1
+  });
+
+  it('should handle multiple search terms', () => {
+    const skill: Skill = mockSkill({
+      name: 'git-commit-workflow',
+      description: 'guide for version control',
+    });
+    const result = rankSkill(skill, ['git', 'commit', 'workflow']);
+
+    expect(result.nameMatches).toBe(3);
+    expect(result.descMatches).toBe(0);
+    expect(result.totalScore).toBe(9); // 3 * 3
+  });
+
+  it('should handle no matching terms', () => {
+    const skill: Skill = mockSkill({
+      name: 'testing',
+      description: 'test patterns',
+    });
+    const result = rankSkill(skill, ['git', 'commit']);
+
+    expect(result.nameMatches).toBe(0);
+    expect(result.descMatches).toBe(0);
+    expect(result.totalScore).toBe(0);
+  });
+
+  it('should perform case-insensitive matching', () => {
+    const skill: Skill = mockSkill({
+      name: 'Git-Commit',
+      description: 'Git Workflow',
+    });
+    const result = rankSkill(skill, ['git']);
+
+    expect(result.nameMatches).toBe(1);
+    expect(result.descMatches).toBe(0);
+  });
+
+  it('should handle partial term matching', () => {
+    const skill: Skill = mockSkill({
+      name: 'github-actions',
+      description: 'version control automation',
+    });
+    const result = rankSkill(skill, ['git']);
+
+    // 'git' is a substring of 'github' in name, so it matches there
+    expect(result.nameMatches).toBe(1);
+    expect(result.descMatches).toBe(0); // Not in description
+    expect(result.totalScore).toBe(3); // 1 * 3
+  });
+
+  it('should return skill object in result', () => {
+    const skill: Skill = mockSkill({
+      name: 'test',
+      description: 'test desc',
+    });
+    const result = rankSkill(skill, ['test']);
+
+    expect(result.skill).toBe(skill);
+  });
+
+  it('should handle empty include terms array', () => {
+    const skill: Skill = mockSkill({
+      name: 'git',
+      description: 'version control',
+    });
+    const result = rankSkill(skill, []);
+
+    expect(result.nameMatches).toBe(0);
+    expect(result.descMatches).toBe(0);
+    expect(result.totalScore).toBe(0);
+  });
+
+  it('should count only first match per term', () => {
+    const skill: Skill = mockSkill({
+      name: 'git workflow',
+      description: 'git is used in workflow',
+    });
+    const result = rankSkill(skill, ['git']);
+
+    // 'git' appears in both name and description, but only counts as name match
+    expect(result.nameMatches).toBe(1);
+    expect(result.descMatches).toBe(0);
+  });
+});
+
+describe('shouldIncludeSkill', () => {
+  it('should include skill when no exclusions', () => {
+    const skill: Skill = mockSkill({
+      name: 'python-guide',
+      description: 'Python basics',
+    });
+    const result = shouldIncludeSkill(skill, []);
+
+    expect(result).toBe(true);
+  });
+
+  it('should exclude skill matching single exclusion term in name', () => {
+    const skill: Skill = mockSkill({
+      name: 'python-guide',
+      description: 'guide',
+    });
+    const result = shouldIncludeSkill(skill, ['python']);
+
+    expect(result).toBe(false);
+  });
+
+  it('should exclude skill matching exclusion term in description', () => {
+    const skill: Skill = mockSkill({
+      name: 'guide',
+      description: 'Python programming',
+    });
+    const result = shouldIncludeSkill(skill, ['python']);
+
+    expect(result).toBe(false);
+  });
+
+  it('should exclude skill matching any exclusion term', () => {
+    const skill: Skill = mockSkill({
+      name: 'python-javascript-guide',
+      description: 'Multi-language guide',
+    });
+    const result = shouldIncludeSkill(skill, ['python', 'javascript']);
+
+    expect(result).toBe(false);
+  });
+
+  it('should perform case-insensitive matching', () => {
+    const skill: Skill = mockSkill({
+      name: 'Python-Guide',
+      description: 'Guide content',
+    });
+    const result = shouldIncludeSkill(skill, ['python']);
+
+    expect(result).toBe(false);
+  });
+
+  it('should match partial terms (substrings)', () => {
+    const skill: Skill = mockSkill({
+      name: 'deprecated-guide',
+      description: 'Old patterns',
+    });
+    const result = shouldIncludeSkill(skill, ['deprecated']);
+
+    expect(result).toBe(false);
+  });
+
+  it('should include skill not matching any exclusion', () => {
+    const skill: Skill = mockSkill({
+      name: 'rust-guide',
+      description: 'Rust programming',
+    });
+    const result = shouldIncludeSkill(skill, ['python', 'javascript']);
+
+    expect(result).toBe(true);
+  });
+
+  it('should handle multiple exclusion terms correctly', () => {
+    const skill: Skill = mockSkill({
+      name: 'general-guide',
+      description: 'General programming patterns',
+    });
+    const result = shouldIncludeSkill(skill, ['python', 'javascript', 'legacy']);
+
+    expect(result).toBe(true);
+  });
+
+  it('should check both name and description together', () => {
+    const skill: Skill = mockSkill({
+      name: 'api-guide',
+      description: 'deprecated patterns',
+    });
+    const result = shouldIncludeSkill(skill, ['deprecated']);
+
+    expect(result).toBe(false);
+  });
+
+  it('should handle empty skill name and description', () => {
+    const skill: Skill = mockSkill({
+      name: '',
+      description: '',
+    });
+    const result = shouldIncludeSkill(skill, ['test']);
+
+    expect(result).toBe(true);
+  });
+
+  it('should handle special characters in exclusion terms', () => {
+    const skill: Skill = mockSkill({
+      name: 'c++-guide',
+      description: 'C++ programming',
+    });
+    const result = shouldIncludeSkill(skill, ['c++']);
+
+    expect(result).toBe(false);
+  });
+});
+
+describe('generateFeedback', () => {
+  it('should show included terms in feedback', () => {
+    const query = parseQuery('api testing');
+    const feedback = generateFeedback(query, 2);
+
+    expect(feedback).toContain('api');
+    expect(feedback).toContain('testing');
+    expect(feedback).toContain('Searching for');
+  });
+
+  it('should show excluded terms in feedback', () => {
+    const query = parseQuery('guide -python');
+    const feedback = generateFeedback(query, 1);
+
+    expect(feedback).toContain('python');
+    expect(feedback).toContain('Excluding');
+  });
+
+  it('should show match count for zero results', () => {
+    const query = parseQuery('nonexistent');
+    const feedback = generateFeedback(query, 0);
+
+    expect(feedback).toContain('No matches found');
+    expect(feedback).toContain('❌');
+  });
+
+  it('should show singular "match" for one result', () => {
+    const query = parseQuery('git');
+    const feedback = generateFeedback(query, 1);
+
+    expect(feedback).toContain('Found 1 match');
+    expect(feedback).toContain('✅');
+  });
+
+  it('should show plural "matches" for multiple results', () => {
+    const query = parseQuery('api');
+    const feedback = generateFeedback(query, 5);
+
+    expect(feedback).toContain('Found 5 matches');
+    expect(feedback).toContain('✅');
+  });
+
+  it('should use pipe separator between sections', () => {
+    const query = parseQuery('api -python');
+    const feedback = generateFeedback(query, 2);
+
+    expect(feedback.split('|').length).toBeGreaterThan(1);
+  });
+
+  it('should handle query with only inclusions', () => {
+    const query = parseQuery('git commit');
+    const feedback = generateFeedback(query, 3);
+
+    expect(feedback).toContain('Searching for');
+    expect(feedback).not.toContain('Excluding');
+    expect(feedback).toContain('Found 3');
+  });
+
+  it('should handle query with only exclusions', () => {
+    const query = parseQuery('-python');
+    const feedback = generateFeedback(query, 2);
+
+    expect(feedback).toContain('Excluding');
+    expect(feedback).toContain('Found 2');
+  });
+
+  it('should include success emoji for matches', () => {
+    const query = parseQuery('test');
+    const feedback = generateFeedback(query, 1);
+
+    expect(feedback).toContain('✅');
+    expect(feedback).not.toContain('❌');
+  });
+
+  it('should include error emoji for no matches', () => {
+    const query = parseQuery('test');
+    const feedback = generateFeedback(query, 0);
+
+    expect(feedback).toContain('❌');
+    expect(feedback).not.toContain('✅');
+  });
+
+  it('should format multiple included terms as comma-separated list', () => {
+    const query = parseQuery('git commit workflow');
+    const feedback = generateFeedback(query, 2);
+
+    expect(feedback).toContain('git');
+    expect(feedback).toContain('commit');
+    expect(feedback).toContain('workflow');
+  });
+
+  it('should format multiple excluded terms as comma-separated list', () => {
+    const query = parseQuery('guide -old -deprecated');
+    const feedback = generateFeedback(query, 1);
+
+    expect(feedback).toContain('old');
+    expect(feedback).toContain('deprecated');
+  });
+
+  it('should handle empty query gracefully', () => {
+    const query = parseQuery('');
+    const feedback = generateFeedback(query, 5);
+
+    expect(typeof feedback).toBe('string');
+    expect(feedback.length).toBeGreaterThan(0);
+  });
+
+  it('should always include match count in feedback', () => {
+    const testCases: Array<{ matchCount: number }> = [
+      { matchCount: 0 },
+      { matchCount: 1 },
+      { matchCount: 10 },
+    ];
+
+    testCases.forEach(({ matchCount }) => {
+      const query = parseQuery('test');
+      const feedback = generateFeedback(query, matchCount);
+      if (matchCount === 0) {
+        expect(feedback).toContain('No matches');
+      } else {
+        expect(feedback).toContain(matchCount.toString());
+      }
+    });
+  });
+});

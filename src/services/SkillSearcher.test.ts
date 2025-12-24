@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { createSkillSearcher } from './SkillSearcher';
+import {
+  parseQuery,
+  rankSkill,
+  shouldIncludeSkill,
+  generateFeedback,
+  createSkillSearcher,
+} from './SkillSearcher';
 import { mockSkill, mockRegistryController } from '../mocks';
 
 describe('SkillSearcher', () => {
@@ -106,9 +112,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should handle special characters in query', () => {
-      const skills = [
-        mockSkill({ name: 'node.js-setup', description: 'Node.js configuration' }),
-      ];
+      const skills = [mockSkill({ name: 'node.js-setup', description: 'Node.js configuration' })];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('node.js');
