@@ -27,16 +27,16 @@ describe('SkillScriptExec', () => {
 
   beforeEach(() => {
     const controller = {
-      registry: new Map([['test_skill', mockSkill]]),
+      skills: [mockSkill],
+      ids: ['test_skill'],
       has: vi.fn((key) => key === 'test_skill'),
       get: vi.fn((key) => (key === 'test_skill' ? mockSkill : undefined)),
       add: vi.fn(),
-      search: vi.fn(() => []),
     };
 
     mockProvider = createSkillProvider(controller);
 
-    skillScriptExecTool = createSkillScriptExecTool({ on: vi.fn() } as any, mockRegistry);
+    skillScriptExecTool = createSkillScriptExecTool({ on: vi.fn() } as any, mockProvider);
   });
 
   describe('tool definition', () => {
@@ -79,7 +79,7 @@ describe('SkillScriptExec', () => {
 
 describe('createScriptResourceExecutor', () => {
   let executor: ReturnType<typeof createScriptResourceExecutor>;
-  let mockRegistry: SkillProvider;
+  let mockProvider: SkillProvider;
 
   const mockSkill: Skill = {
     name: 'test-skill',
@@ -94,29 +94,17 @@ describe('createScriptResourceExecutor', () => {
   };
 
   beforeEach(() => {
-    const byFQDNController = {
-      registry: new Map([['test_skill', mockSkill]]),
+    const controller = {
+      skills: [mockSkill],
+      ids: ['test_skill'],
       has: vi.fn((key) => key === 'test_skill'),
       get: vi.fn((key) => (key === 'test_skill' ? mockSkill : undefined)),
       add: vi.fn(),
-      search: vi.fn(() => []),
     };
 
-    const byNameController = {
-      registry: new Map([['test-skill', mockSkill]]),
-      has: vi.fn((key) => key === 'test-skill'),
-      get: vi.fn((key) => (key === 'test-skill' ? mockSkill : undefined)),
-      add: vi.fn(),
-      search: vi.fn(() => []),
-    };
+    mockProvider = createSkillProvider(controller);
 
-    mockRegistry = {
-      byFQDN: byFQDNController,
-      byName: byNameController,
-      search: vi.fn(() => []),
-    };
-
-    executor = createScriptResourceExecutor({ registry: mockRegistry });
+    executor = createScriptResourceExecutor(mockProvider);
   });
 
   it('should handle skill not found error', async () => {
