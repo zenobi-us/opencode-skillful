@@ -12,7 +12,7 @@ import { normalizePathQuery, stripSkillsPrefix } from '../identifiers';
 /**
  * Parse a user query into structured search terms
  */
-function parseQuery(queryString: string): ParsedSkillQuery {
+export function parseQuery(queryString: string): ParsedSkillQuery {
   const searchStringInstance = SearchString.parse(queryString);
 
   const textSegments = searchStringInstance.getTextSegments() as TextSegment[];
@@ -38,7 +38,7 @@ function parseQuery(queryString: string): ParsedSkillQuery {
 /**
  * Calculate ranking score for a skill against query terms
  */
-function rankSkill(skill: Skill, includeTerms: string[]): SkillRank {
+export function rankSkill(skill: Skill, includeTerms: string[]): SkillRank {
   const skillName = skill.name.toLowerCase();
   const skillDesc = skill.description.toLowerCase();
 
@@ -66,7 +66,7 @@ function rankSkill(skill: Skill, includeTerms: string[]): SkillRank {
 /**
  * Filter out skills matching exclusion terms
  */
-function shouldIncludeSkill(skill: Skill, excludeTerms: string[]): boolean {
+export function shouldIncludeSkill(skill: Skill, excludeTerms: string[]): boolean {
   if (excludeTerms.length === 0) {
     return true;
   }
@@ -78,11 +78,11 @@ function shouldIncludeSkill(skill: Skill, excludeTerms: string[]): boolean {
 /**
  * Generate user-friendly feedback about query interpretation
  */
-function generateFeedback(query: ParsedSkillQuery, matchCount: number): string {
+export function generateFeedback(query: ParsedSkillQuery, matchCount: number): string {
   const parts: string[] = [];
 
   if (query.include.length > 0) {
-    parts.push(`📝 Searching for: **${query.include.join(', ')}**`);
+    parts.push(`📝 Searching for: "${query.include.join(', ')}**`);
   }
 
   if (query.hasExclusions) {

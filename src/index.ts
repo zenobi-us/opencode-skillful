@@ -37,6 +37,7 @@ import { createToolResourceReader } from './tools/SkillResourceReader';
 import { createUseSkillsTool } from './tools/SkillUser';
 import { createFindSkillsTool } from './tools/SkillFinder';
 import { createSkillScriptExecTool } from './tools/SkillScriptExec';
+import { createSkillProvider } from './services/SkillProvider';
 
 const OpenCodePaths = envPaths('opencode', { suffix: '' });
 
@@ -56,14 +57,14 @@ async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
 export const SkillsPlugin: Plugin = async (ctx) => {
   const config = await getPluginConfig(ctx);
   // Discovery order: lowest to highest priority (last wins on duplicate tool names)
-  const registry = await createSkillRegistry(ctx, config);
+  const provider = createSkillProvider(await createSkillRegistry(ctx, config));
 
   return {
     tool: {
-      skill_use: createUseSkillsTool(ctx, registry),
-      skill_find: createFindSkillsTool(ctx, registry),
-      skill_resource: createToolResourceReader(ctx, registry),
-      skill_exec: createSkillScriptExecTool(ctx, registry),
+      skill_use: createUseSkillsTool(ctx, provider),
+      skill_find: createFindSkillsTool(ctx, provider),
+      skill_resource: createToolResourceReader(ctx, provider),
+      skill_exec: createSkillScriptExecTool(ctx, provider),
     },
   };
 };

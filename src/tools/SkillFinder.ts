@@ -1,5 +1,5 @@
 import { type PluginInput, type ToolDefinition, tool } from '@opencode-ai/plugin';
-import type { SkillProvider, SkillSearchResult } from '../types';
+import type { SkillProvider } from '../types';
 
 /**
  * Tool to search for skills using natural language query syntax
@@ -17,28 +17,37 @@ import type { SkillProvider, SkillSearchResult } from '../types';
  */
 export function createFindSkillsTool(_ctx: PluginInput, provider: SkillProvider): ToolDefinition {
   return tool({
-    description:
-      "Search for skills using natural query syntax. Supports path prefixes (e.g., 'experts', 'superpowers/writing'), negation (-term), quoted phrases, and free text. Use '*' to list all skills.",
+    description: `
+Search for skills using natural query syntax. 
+
+Supports query features: 
+- path prefixes (e.g., 'experts', 'superpowers/writing'), 
+- modifiers: (-term) or (+term),
+- quoted phrases,
+- and free text. 
+
+Use '*' to list all skills.`,
     args: {
       query: tool.schema.string(),
     },
     execute: async (args) => {
       const result = provider.searcher(args.query);
-      return skillResultsFormatter(result);
+
+      const results = result.matches
+        .map(
+          (skill) =>
+            `<Skill id="${skill.toolName}" shortname="${skill.name}" > ${skill.description} </Skill>`
+        )
+        .join('\n');
+
+      return `<SkillSearchResults query="${args.query}">
+${results}
+<Summary>
+  <Total>${provider.registry.skills.length}</Total>
+  <Matches>${result.totalMatches}</Matches>
+  <Feedback>${result.feedback}</Feedback>
+</Summary>
+</SkillSearchResults>`;
     },
   });
-}
-
-export function skillResultsFormatter(results: SkillSearchResult) {
-  const resultsList = results.matches
-    .map((m) => `- **${m.name}** \`${m.toolName}\`\n  ${m.description}`)
-    .join('\n');
-
-  return `
-# Skill Search Results
-
-${resultsList}
-
-${results.feedback}
-`;
 }
