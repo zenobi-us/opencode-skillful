@@ -457,20 +457,270 @@ describe('generateFeedback', () => {
   });
 
   it('should always include match count in feedback', () => {
-    const testCases: Array<{ matchCount: number }> = [
-      { matchCount: 0 },
-      { matchCount: 1 },
-      { matchCount: 10 },
+    const testCases = [
+      { query: parseQuery('test'), matchCount: 0 },
+      { query: parseQuery('test'), matchCount: 1 },
+      { query: parseQuery('test'), matchCount: 10 },
     ];
 
-    testCases.forEach(({ matchCount }) => {
-      const query = parseQuery('test');
+    testCases.forEach(({ query, matchCount }) => {
       const feedback = generateFeedback(query, matchCount);
       if (matchCount === 0) {
         expect(feedback).toContain('No matches');
       } else {
         expect(feedback).toContain(matchCount.toString());
       }
+    });
+  });
+});
+
+describe('SkillSearcher - Edge Cases', () => {
+  describe('Exact phrase matching (quoted)', () => {
+    it('should handle quoted phrases in parseQuery', () => {
+      const result = parseQuery('"git commit" workflow');
+      expect(result.include.length).toBeGreaterThan(0);
+      expect(result.originalQuery).toBe('"git commit" workflow');
+    });
+
+    it('should parse single quoted term', () => {
+      const result = parseQuery('"nodejs"');
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+
+    it('should handle quoted negation', () => {
+      const result = parseQuery('-"deprecated feature"');
+      expect(result.exclude.length).toBeGreaterThan(0);
+    });
+
+    it('should handle multiple quoted phrases', () => {
+      const result = parseQuery('"git workflow" "best practices"');
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+
+    it('should handle mismatched quotes', () => {
+      const result = parseQuery('"git workflow');
+      // Should parse gracefully even with unmatched quotes
+      expect(result).toHaveProperty('include');
+      expect(result).toHaveProperty('exclude');
+    });
+  });
+
+  describe('Query normalization - Unicode and emoji', () => {
+    it('should handle Unicode characters in query', () => {
+      const result = parseQuery('café typescript');
+      expect(result.include.length).toBeGreaterThan(0);
+      expect(result.include.some((t) => t.includes('caf'))).toBe(true);
+    });
+
+    it('should handle emoji in query', () => {
+      const result = parseQuery('🚀 rocket launch');
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+
+    it('should handle mixed Unicode and ASCII', () => {
+      const result = parseQuery('Überschrift title élève');
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+
+    it('should normalize accented characters', () => {
+      const result = parseQuery('naïve résumé');
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+
+    it('should handle RTL characters', () => {
+      const result = parseQuery('مرحبا hello');
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+
+    it('should handle zero-width characters gracefully', () => {
+      const result = parseQuery('test\u200Bskill');
+      expect(result).toHaveProperty('include');
+    });
+
+    it('should handle combining diacriticals', () => {
+      const result = parseQuery('e\u0301 data'); // é as e + combining acute
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Ranking tie-breaking', () => {
+    it('should sort by name alphabetically when scores equal', () => {
+      const skills: Skill[] = [
+        mockSkill({ name: 'zebra-api', description: 'api reference' }),
+        mockSkill({ name: 'api-guide', description: 'api reference' }),
+        mockSkill({ name: 'api-design', description: 'api reference' }),
+      ];
+
+      const results = skills
+        .map((skill) => rankSkill(skill, ['api']))
+        .sort((a, b) => {
+          if (b.totalScore !== a.totalScore) {
+            return b.totalScore - a.totalScore;
+          }
+          if (b.nameMatches !== a.nameMatches) {
+            return b.nameMatches - a.nameMatches;
+          }
+          return a.skill.name.localeCompare(b.skill.name);
+        });
+
+      // All have same score and name matches, should sort alphabetically
+      expect(results[0].skill.name).toBe('api-design');
+      expect(results[1].skill.name).toBe('api-guide');
+      expect(results[2].skill.name).toBe('zebra-api');
+    });
+
+    it('should prioritize higher scores over alphabetical order', () => {
+      const skills: Skill[] = [
+        mockSkill({ name: 'aaa-skill', description: 'no match' }),
+        mockSkill({ name: 'zzzapi', description: 'no match' }),
+      ];
+
+      const results = skills
+        .map((skill) => rankSkill(skill, ['api']))
+        .sort((a, b) => {
+          if (b.totalScore !== a.totalScore) {
+            return b.totalScore - a.totalScore;
+          }
+          return a.skill.name.localeCompare(b.skill.name);
+        });
+
+      // zzzapi has higher score (api in name = 3 vs 0), should come first despite alphabetical order
+      expect(results[0].skill.name).toBe('zzzapi');
+      expect(results[0].totalScore).toBe(3); // name match
+      expect(results[1].totalScore).toBe(0); // no match
+    });
+
+    it('should handle exact match bonus in tie-breaking', () => {
+      const skills: Skill[] = [
+        mockSkill({ name: 'git', description: 'version control' }),
+        mockSkill({ name: 'github', description: 'git hosting' }),
+      ];
+
+      const results = skills
+        .map((skill) => rankSkill(skill, ['git']))
+        .sort((a, b) => {
+          if (b.totalScore !== a.totalScore) {
+            return b.totalScore - a.totalScore;
+          }
+          return a.skill.name.localeCompare(b.skill.name);
+        });
+
+      // 'git' exact match should have higher score
+      expect(results[0].skill.name).toBe('git');
+      expect(results[0].totalScore).toBeGreaterThan(results[1].totalScore);
+    });
+  });
+
+  describe('Path prefix edge cases', () => {
+    it('should handle case sensitivity in tool names', () => {
+      const result = parseQuery('Git');
+      expect(result.include).toContain('git');
+      // Normalized to lowercase
+      expect(result.include).not.toContain('Git');
+    });
+
+    it('should handle mixed case query terms', () => {
+      const result = parseQuery('GitHUB TypeScript');
+      expect(result.include).toContain('github');
+      expect(result.include).toContain('typescript');
+    });
+
+    it('should handle path separators in search', () => {
+      const result = parseQuery('skills/git');
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+
+    it('should handle dots in tool names', () => {
+      const result = parseQuery('node.js');
+      expect(result.include).toContain('node.js');
+    });
+
+    it('should handle hyphens in tool names', () => {
+      const result = parseQuery('git-flow workflow');
+      expect(result.include).toContain('git-flow');
+      expect(result.include).toContain('workflow');
+    });
+
+    it('should handle underscores in tool names', () => {
+      const result = parseQuery('test_framework');
+      expect(result.include).toContain('test_framework');
+    });
+
+    it('should handle special characters in paths', () => {
+      const result = parseQuery('c++ rust');
+      expect(result.include).toContain('c++');
+      expect(result.include).toContain('rust');
+    });
+  });
+
+  describe('Query edge cases - empty and whitespace', () => {
+    it('should handle tabs and newlines', () => {
+      const result = parseQuery('git\t\nworkflow');
+      expect(result.include.length).toBeGreaterThan(0);
+    });
+
+    it('should handle multiple spaces between terms', () => {
+      const result = parseQuery('git    workflow    design');
+      expect(result.include.length).toBe(3);
+    });
+
+    it('should handle leading and trailing whitespace', () => {
+      const result = parseQuery('   git workflow   ');
+      expect(result.include).toContain('git');
+      expect(result.include).toContain('workflow');
+    });
+
+    it('should handle only whitespace', () => {
+      const result = parseQuery('   \t\n  ');
+      // search-string parses whitespace as a segment, but filtering removes it
+      expect(result.include).toHaveLength(0);
+      expect(result.exclude).toHaveLength(0);
+      // termCount counts the raw segment before filtering
+      expect(result.termCount).toBe(1);
+    });
+
+    it('should handle very long queries', () => {
+      const longQuery = Array(100).fill('term').join(' ');
+      const result = parseQuery(longQuery);
+      expect(result.include.length).toBeGreaterThan(0);
+      expect(result.termCount).toBe(100);
+    });
+  });
+
+  describe('Ranking with special cases', () => {
+    it('should handle skills with empty descriptions', () => {
+      const skill = mockSkill({ name: 'test', description: '' });
+      const result = rankSkill(skill, ['test']);
+
+      expect(result.nameMatches).toBe(1);
+      expect(result.totalScore).toBe(13); // 1 * 3 + exact bonus 10
+    });
+
+    it('should handle very long skill names', () => {
+      const longName = 'a'.repeat(500);
+      const skill = mockSkill({ name: longName, description: 'description' });
+      const result = rankSkill(skill, ['a']);
+
+      expect(result.nameMatches).toBe(1);
+    });
+
+    it('should handle numeric terms in queries', () => {
+      const skill = mockSkill({ name: 'python3-guide', description: 'Python 3 tutorial' });
+      const result = rankSkill(skill, ['3']);
+
+      expect(result.totalScore).toBeGreaterThan(0);
+    });
+
+    it('should handle scores with many matches', () => {
+      const skill = mockSkill({
+        name: 'api-api-api',
+        description: 'api api api api',
+      });
+      const result = rankSkill(skill, ['api']);
+
+      // One match per term (3 in name)
+      expect(result.nameMatches).toBe(1);
+      expect(result.totalScore).toBe(3);
     });
   });
 });

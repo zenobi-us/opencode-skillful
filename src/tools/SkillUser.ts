@@ -1,5 +1,5 @@
 import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
-import type { Skill, SkillProvider, SkillRegistry } from '../types';
+import type { Skill, SkillProvider, SkillRegistryController } from '../types';
 import { createInstructionInjector } from '../services/OpenCodeChat';
 
 const unorderedList = <T extends { path: string }>(items: T[], labelFn: (item: T) => string) => {
@@ -11,7 +11,7 @@ const unorderedList = <T extends { path: string }>(items: T[], labelFn: (item: T
  */
 
 export function createUseSkillsTool(ctx: PluginInput, provider: SkillProvider): ToolDefinition {
-  const skillLoader = createSkillLoader(provider);
+  const skillLoader = createSkillLoader(provider.registry);
 
   return tool({
     description:
@@ -32,11 +32,11 @@ export function createUseSkillsTool(ctx: PluginInput, provider: SkillProvider): 
   });
 }
 
-function createSkillLoader(registry: SkillRegistry) {
+function createSkillLoader(registry: SkillRegistryController) {
   /**
    * Load a single skill into the chat
    */
-  async function render(skill: Skill) {
+  function render(skill: Skill) {
     const skillScripts = unorderedList(skill.scripts, (script) => `${script.path}`);
     const skillReferences = unorderedList(
       skill.references,
@@ -76,7 +76,7 @@ ${skill.content}
       loaded.push(skill.toolName);
     }
 
-    return summary(JSON.stringify({ loaded, notFound }));
+    return JSON.stringify({ loaded, notFound });
   }
 
   return loadSkills;

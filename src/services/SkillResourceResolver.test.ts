@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createSkillResourceResolver } from './SkillResourceResolver';
 import type { SkillProvider } from '../types';
-import { mockSkill, mockRegistryController, mockProvider } from '../mocks';
+import { mockSkill } from '../mocks';
 
 /**
  * Unit tests for SkillResourceResolver service
@@ -120,7 +120,7 @@ describe('SkillResourceResolver', () => {
       expect(mockRegistry.registry.get).toHaveBeenCalledWith('test-skill');
     });
 
-    it('should normalize path traversal attempts in relative_path', async () => {
+    it('should safely contain path traversal attempts with ../', async () => {
       try {
         await resolver({
           skill_name: 'test-skill',
@@ -128,9 +128,56 @@ describe('SkillResourceResolver', () => {
           relative_path: '../../../etc/passwd',
         });
       } catch (error) {
-        // Path traversal should be normalized away
-        expect((error as Error).message).toContain('test-skill');
+        // Path traversal is now blocked by validation
+        expect((error as Error).message).toContain('Path traversal attempt detected');
       }
+    });
+
+    it('should prevent path traversal from escaping skill directory', async () => {
+      // Multiple attempts to escape should all be rejected
+      const traversalAttempts = ['../../../etc/passwd', '../../secrets.txt', '../.ssh/id_rsa'];
+
+      for (const attempt of traversalAttempts) {
+        await expect(
+          resolver({
+            skill_name: 'test-skill',
+            type: 'reference',
+            relative_path: attempt,
+          })
+        ).rejects.toThrow('Path traversal attempt detected');
+      }
+    });
+
+    it('should handle missing resource files with clear error', async () => {
+      await expect(
+        resolver({
+          skill_name: 'test-skill',
+          type: 'reference',
+          relative_path: 'nonexistent.md',
+        })
+      ).rejects.toThrow('ENOENT');
+    });
+
+    it('should safely handle absolute paths (normalized to skill dir)', async () => {
+      // Absolute paths are normalized relative to the skill directory
+      // /etc/passwd becomes /skills/test-skill/reference/etc/passwd
+      await expect(
+        resolver({
+          skill_name: 'test-skill',
+          type: 'reference',
+          relative_path: '/etc/passwd',
+        })
+      ).rejects.toThrow('ENOENT');
+    });
+
+    it('should validate that resolved path stays within skill boundary', async () => {
+      await expect(
+        resolver({
+          skill_name: 'test-skill',
+          type: 'reference',
+          relative_path: '../other-skill/file.md',
+        })
+      ).rejects.toThrow('Path traversal attempt detected');
     });
   });
 });

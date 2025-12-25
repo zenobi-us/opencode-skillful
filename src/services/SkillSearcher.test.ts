@@ -1,17 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import {
-  parseQuery,
-  rankSkill,
-  shouldIncludeSkill,
-  generateFeedback,
-  createSkillSearcher,
-} from './SkillSearcher';
+import { createSkillSearcher } from './SkillSearcher';
 import { mockSkill, mockRegistryController } from '../mocks';
+import { Skill } from '../types';
 
 describe('SkillSearcher', () => {
   describe('Query parsing', () => {
     it('should parse simple query with single term', () => {
-      const skills = [mockSkill({ name: 'writing' })];
+      const skills: Skill[] = [mockSkill({ name: 'writing' })];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('writing');
@@ -48,7 +43,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should parse query with multiple exclusion terms', () => {
-      const skills = [];
+      const skills: Skill[] = [];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('tool -python -javascript');
@@ -59,7 +54,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should parse mixed inclusion and exclusion terms', () => {
-      const skills = [];
+      const skills: Skill[] = [];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('api -deprecated -legacy');
@@ -92,7 +87,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should handle only whitespace', () => {
-      const skills = [];
+      const skills: Skill[] = [];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('   ');
@@ -121,7 +116,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should handle only exclusion terms', () => {
-      const skills = [];
+      const skills: Skill[] = [];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('-python -javascript');
@@ -131,7 +126,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should track term count and exclusion flag', () => {
-      const skills = [];
+      const skills: Skill[] = [];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('api -deprecated');
@@ -142,7 +137,7 @@ describe('SkillSearcher', () => {
 
     it('should track original query string', () => {
       const queryString = 'writing git -deprecated';
-      const skills = [];
+      const skills: Skill[] = [];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher(queryString);
@@ -302,7 +297,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should return empty array when no skills match inclusion terms', () => {
-      const skills = [
+      const skills: Skill[] = [
         mockSkill({
           name: 'python-guide',
           description: 'Python programming',
@@ -368,7 +363,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should handle empty skills array', () => {
-      const skills = [];
+      const skills: Skill[] = [];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('test');
@@ -476,7 +471,7 @@ describe('SkillSearcher', () => {
     });
 
     it('should generate feedback for no results', () => {
-      const skills = [];
+      const skills: Skill[] = [];
       const registry = mockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('nonexistent');
@@ -587,7 +582,7 @@ describe('SkillSearcher', () => {
       const successResult = searcher('test');
       expect(successResult.feedback).toContain('✅');
 
-      const emptySkills = [];
+      const emptySkills: Skill[] = [];
       const emptyRegistry = mockRegistryController(emptySkills);
       const emptySearcher = createSkillSearcher(emptyRegistry);
       const emptyResult = emptySearcher('test');

@@ -10,7 +10,17 @@ function resolveSkillResourcePath(args: {
   try {
     // Normalise the resource path to avoid mishaps.
     const scriptPath = args.relative_path.replace(`$${sep}`, '').replace(`${args.type}${sep}`, '');
-    const resourcePath = resolve(join(args.skill.fullPath, args.type, scriptPath));
+    const skillTypeDir = resolve(join(args.skill.fullPath, args.type));
+    const resourcePath = resolve(join(skillTypeDir, scriptPath));
+
+    // Verify the resolved path is within the skill's type directory
+    // This prevents path traversal attacks like ../../../etc/passwd
+    if (!resourcePath.startsWith(skillTypeDir + sep) && resourcePath !== skillTypeDir) {
+      throw new Error(
+        `Path traversal attempt detected: resolved path ${resourcePath} is outside skill directory ${skillTypeDir}`
+      );
+    }
+
     return resourcePath;
   } catch (error) {
     throw new Error(

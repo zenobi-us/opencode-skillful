@@ -19,12 +19,12 @@ export function parseQuery(queryString: string): ParsedSkillQuery {
   const include = textSegments
     .filter((s: TextSegment) => !s.negated)
     .map((s: TextSegment) => s.text.toLowerCase())
-    .filter((s: string) => s.length > 0);
+    .filter((s: string) => s.trim().length > 0);
 
   const exclude = textSegments
     .filter((s: TextSegment) => s.negated)
     .map((s: TextSegment) => s.text.toLowerCase())
-    .filter((s: string) => s.length > 0);
+    .filter((s: string) => s.trim().length > 0);
 
   return {
     include,

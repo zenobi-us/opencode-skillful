@@ -12,7 +12,7 @@ export function createScriptResourceExecutor(provider: SkillProvider) {
       relative_path: args.relative_path,
     });
 
-    const result = await Bun.$`${script.absolute_path} ${args.args ? args.args.join(' ') : ''}`;
+    const result = await Bun.$`${script.absolute_path} ${args.args ?? []}`;
     return result;
   };
 }
