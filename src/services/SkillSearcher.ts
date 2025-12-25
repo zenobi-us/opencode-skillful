@@ -6,6 +6,7 @@ import type {
   SkillRank,
   SkillSearchResult,
   SkillRegistryController,
+  SkillSearcher,
 } from '../types';
 import { normalizePathQuery, stripSkillsPrefix } from '../identifiers';
 
@@ -111,20 +112,25 @@ export function generateFeedback(query: ParsedSkillQuery, matchCount: number): s
  * - Multiple search terms (AND logic)
  */
 
-export function createSkillSearcher(registry: SkillRegistryController) {
-  function resolveQuery(queryString: string) {
+export function createSkillSearcher(registry: SkillRegistryController): SkillSearcher {
+  function resolveQuery(queryString: string): SkillSearchResult {
+    const query = parseQuery(queryString);
     const skills = registry.skills;
+    const output: SkillSearchResult = {
+      matches: [],
+      totalMatches: 0,
+      totalSkills: registry.skills.length,
+      feedback: '',
+      query,
+    };
 
     // List all skills if query is empty or "*"
     if (queryString === '' || queryString === '*') {
-      return {
-        matches: skills,
-        totalMatches: skills.length,
-        feedback: `✅ Listing all ${skills.length} skills`,
-        query: parseQuery(queryString),
-      };
+      output.matches = skills;
+      output.totalMatches = skills.length;
+      output.feedback = `✅ Listing all ${skills.length} skills`;
+      return output;
     }
-    const query = parseQuery(queryString);
 
     // Try path prefix matching first
     const normalizedQuery = normalizePathQuery(queryString).toLowerCase();
@@ -134,19 +140,16 @@ export function createSkillSearcher(registry: SkillRegistryController) {
     });
 
     if (prefixMatches.length > 0) {
-      return {
-        matches: prefixMatches,
-        totalMatches: prefixMatches.length,
-        query,
-      };
+      output.matches = prefixMatches;
+      output.totalMatches = prefixMatches.length;
+      output.feedback = `✅ Found ${prefixMatches.length} matches for prefix "${queryString}"`;
+
+      return output;
     }
 
     if (query.include.length === 0) {
-      return {
-        matches: [],
-        totalMatches: 0,
-        query,
-      };
+      output.feedback = `❌ No valid search terms provided in query "${queryString}"`;
+      return output;
     }
 
     let results = skills.filter((skill) => {
@@ -154,11 +157,11 @@ export function createSkillSearcher(registry: SkillRegistryController) {
       return query.include.every((term) => haystack.includes(term));
     });
 
-    return {
-      matches: results,
-      totalMatches: results.length,
-      query,
-    };
+    output.matches = results;
+    output.totalMatches = results.length;
+    output.feedback = `✅ Found ${results.length} matches for query "${queryString}"`;
+
+    return output;
   }
 
   /**
@@ -166,8 +169,8 @@ export function createSkillSearcher(registry: SkillRegistryController) {
    */
   return function search(queryString: string): SkillSearchResult {
     const resolved = resolveQuery(queryString);
+    const feedback = resolved.feedback;
     const query = resolved.query;
-    const feedback = generateFeedback(query, resolved.matches.length);
 
     const results = resolved.matches.filter((skill) =>
       shouldIncludeSkill(skill, resolved.query.exclude)
@@ -194,6 +197,7 @@ export function createSkillSearcher(registry: SkillRegistryController) {
       totalMatches,
       feedback,
       query,
+      totalSkills: registry.skills.length,
     };
   };
 }

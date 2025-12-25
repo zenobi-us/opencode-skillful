@@ -1,5 +1,11 @@
-import { PluginInput, tool } from '@opencode-ai/plugin';
-import { PluginConfig, Skill, SkillRegistry, SkillRegistryController } from '../types';
+import { tool } from '@opencode-ai/plugin';
+import {
+  PluginConfig,
+  Skill,
+  SkillRegistry,
+  SkillRegistryController,
+  SkillRegistryDebugInfo,
+} from '../types';
 
 import { dirname, basename, sep, join } from 'node:path';
 import { lstat } from 'node:fs/promises';
@@ -10,13 +16,9 @@ type DiscoveredSkillPath = {
   basePath: string;
   absolutePath: string;
 };
-
 // Validation Schema
 const SkillFrontmatterSchema = tool.schema.object({
-  name: tool.schema
-    .string()
-    .regex(/^[a-z0-9-]+$/, 'Name must be lowercase alphanumeric with hyphens')
-    .min(1, 'Name cannot be empty'),
+  name: tool.schema.string().optional(),
   description: tool.schema
     .string()
     .min(20, 'Description must be at least 20 characters for discoverability'),
@@ -27,6 +29,7 @@ const SkillFrontmatterSchema = tool.schema.object({
 
 function createSkillRegistryController(): SkillRegistryController {
   const registry: SkillRegistry = new Map();
+
   return {
     get skills() {
       return Array.from(registry.values()).sort((a, b) => a.name.localeCompare(b.name));
@@ -46,9 +49,8 @@ function createSkillRegistryController(): SkillRegistryController {
  * SkillRegistry manages skill discovery and parsing
  */
 export async function createSkillRegistry(
-  ctx: PluginInput,
   config: PluginConfig
-): Promise<SkillRegistryController> {
+): Promise<{ controller: SkillRegistryController; debug: SkillRegistryDebugInfo }> {
   /**
    * Skill Registry Map
    *
@@ -60,30 +62,45 @@ export async function createSkillRegistry(
    * - Stored as Map for metadata access by tool resource reader
    */
   const controller = createSkillRegistryController();
+  const debug: SkillRegistryDebugInfo = {
+    discovered: 0,
+    parsed: 0,
+    rejected: 0,
+    duplicates: 0,
+    errors: [],
+  };
 
   // Find all SKILL.md files recursively
   const matches = await findSkillPaths(config.basePaths);
+  debug.discovered = matches.length;
+
   const dupes: string[] = [];
 
   for await (const match of matches) {
-    const skill = await parseSkill(match);
+    try {
+      const skill = await parseSkill(match);
 
-    if (!skill) {
-      continue;
-    }
+      if (!skill) {
+        debug.rejected++;
+        debug.errors.push(`[NOSKILLERROR] Failed to parse skill at ${match.absolutePath}`);
+        continue;
+      }
 
-    if (controller.has(skill.toolName)) {
-      dupes.push(skill.toolName);
-      continue;
+      if (controller.has(skill.toolName)) {
+        dupes.push(skill.toolName);
+        debug.rejected++;
+        debug.errors.push(`[DUPESKILL] Duplicate skill name: ${skill.toolName}`);
+        continue;
+      }
+      controller.add(skill.toolName, skill);
+      debug.parsed++;
+    } catch (error) {
+      debug.rejected++;
+      debug.errors.push(`[ERROR] ${(error as Error).message}`);
     }
-    controller.add(skill.toolName, skill);
   }
 
-  if (dupes.length) {
-    console.warn(`⚠️  Duplicate skills detected (skipped): ${dupes.join(', ')}`);
-  }
-
-  return controller;
+  return { controller, debug };
 }
 
 /**
@@ -114,73 +131,59 @@ function toolName(skillPath: string): string {
  * Returns null if parsing fails (with error logging)
  */
 async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null> {
-  try {
-    const relativePath = skillPath.absolutePath.replace(skillPath.basePath + sep, '');
+  const relativePath = skillPath.absolutePath.replace(skillPath.basePath + sep, '');
 
-    if (!relativePath) {
-      console.error(`❌ Skill path does not match expected pattern: ${skillPath.absolutePath}`);
-      return null;
-    }
-
-    // Read file
-    const content = await Bun.file(skillPath.absolutePath).text();
-
-    // Parse YAML frontmatter
-    const parsed = matter(content);
-
-    // Validate frontmatter schema
-    const frontmatter = SkillFrontmatterSchema.safeParse(parsed.data);
-    if (!frontmatter.success) {
-      console.error(`❌ Invalid frontmatter in ${skillPath.absolutePath}:`);
-      frontmatter.error.flatten().formErrors.forEach((err) => {
-        console.error(`   - ${err}`);
-      });
-      return null;
-    }
-
-    // Validate name matches directory
-    const skillDirName = basename(dirname(skillPath.absolutePath));
-    if (frontmatter.data.name !== skillDirName) {
-      console.error(
-        `❌ Name mismatch in ${skillPath.absolutePath}:`,
-        `\n   Frontmatter name: "${frontmatter.data.name}"`,
-        `\n   Directory name: "${skillDirName}"`,
-        `\n   Fix: Update the 'name' field in SKILL.md to match the directory name`
-      );
-      return null;
-    }
-
-    // Generate tool name from path
-    const skillFullPath = dirname(skillPath.absolutePath);
-
-    // Scan for scripts and resources
-    const [scriptPaths, referencePaths, assetPaths] = await Promise.all([
-      listSkillFiles(skillFullPath, 'scripts'),
-      listSkillFiles(skillFullPath, 'references'),
-      listSkillFiles(skillFullPath, 'assets'),
-    ]);
-
-    return {
-      allowedTools: frontmatter.data['allowed-tools'],
-      content: parsed.content.trim(),
-      description: frontmatter.data.description,
-      fullPath: skillFullPath,
-      toolName: toolName(relativePath),
-      license: frontmatter.data.license,
-      metadata: frontmatter.data.metadata,
-      name: frontmatter.data.name,
-      path: skillPath.absolutePath,
-      scripts: scriptPaths.map((p) => ({ path: p })),
-      references: referencePaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
-      assets: assetPaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
-    };
-  } catch (error) {
-    console.error(
-      `❌ Error parsing skill ${skillPath.absolutePath}:`,
-      error instanceof Error ? error.message : String(error)
-    );
-    return null;
+  if (!relativePath) {
+    throw new Error(`❌ Skill path does not match expected pattern: ${skillPath.absolutePath}`);
   }
+
+  // Read file
+  const content = await Bun.file(skillPath.absolutePath).text();
+
+  // Parse YAML frontmatter
+  const parsed = matter(content);
+
+  // Validate frontmatter schema
+  const frontmatter = SkillFrontmatterSchema.safeParse(parsed.data);
+  if (!frontmatter.success) {
+    const error = [
+      `❌ Invalid frontmatter in ${skillPath.absolutePath}:`,
+
+      ...frontmatter.error.flatten().formErrors.map((err) => {
+        return `   - ${err}`;
+      }),
+    ].join('\n');
+
+    throw new Error(error);
+  }
+
+  // Use directory name as skill name (shortName)
+  const shortName = basename(dirname(skillPath.absolutePath));
+
+  // Generate tool name from path
+  const skillFullPath = dirname(skillPath.absolutePath);
+
+  // Scan for scripts and resources
+  const [scriptPaths, referencePaths, assetPaths] = await Promise.all([
+    listSkillFiles(skillFullPath, 'scripts'),
+    listSkillFiles(skillFullPath, 'references'),
+    listSkillFiles(skillFullPath, 'assets'),
+  ]);
+
+  return {
+    allowedTools: frontmatter.data['allowed-tools'],
+    content: parsed.content.trim(),
+    description: frontmatter.data.description,
+    fullPath: skillFullPath,
+    toolName: toolName(relativePath),
+    license: frontmatter.data.license,
+    metadata: frontmatter.data.metadata,
+    name: shortName,
+    path: skillPath.absolutePath,
+    scripts: scriptPaths.map((p) => ({ path: p })),
+    references: referencePaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
+    assets: assetPaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
+  };
 }
 
 /**
@@ -231,11 +234,7 @@ async function findSkillPaths(basePaths: string | string[]): Promise<DiscoveredS
           absolutePath: match,
         });
       }
-    } catch (error) {
-      console.error(
-        `❌ Error scanning skill path ${basePath}:`,
-        error instanceof Error ? error.message : String(error)
-      );
+    } catch {
       continue;
     }
   }

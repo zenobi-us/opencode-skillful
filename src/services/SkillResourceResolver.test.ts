@@ -37,7 +37,19 @@ describe('SkillResourceResolver', () => {
 
     mockRegistry = {
       registry: controller,
-      searcher: vi.fn(() => ({ matches: [], totalMatches: 0, feedback: '', query: {} as any })),
+      searcher: vi.fn(() => ({
+        matches: [],
+        totalMatches: 0,
+        feedback: '',
+        totalSkills: 1,
+        query: {
+          include: [],
+          exclude: [],
+          originalQuery: '',
+          hasExclusions: false,
+          termCount: 0,
+        },
+      })),
     };
 
     resolver = createSkillResourceResolver(mockRegistry);

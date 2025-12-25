@@ -45,6 +45,7 @@ export type ParsedSkillQuery = {
 export type SkillSearchResult = {
   matches: Skill[]; // Ranked skill matches
   totalMatches: number; // Total count before exclusions
+  totalSkills: number; // Total skills in registry
   feedback: string; // User-friendly interpretation message
   query: ParsedSkillQuery; // Parsed query structure
 };
@@ -73,6 +74,11 @@ export type PluginConfig = {
 export type SkillRegistry = Map<string, Skill>;
 
 /**
+ * Skill searcher function type
+ */
+export type SkillSearcher = (_query: string) => SkillSearchResult;
+
+/**
  * Skill registry controller interface
  */
 export type SkillRegistryController = {
@@ -83,7 +89,16 @@ export type SkillRegistryController = {
   add: (_key: string, _skill: Skill) => void;
 };
 
+export type SkillRegistryDebugInfo = {
+  discovered: number;
+  parsed: number;
+  rejected: number;
+  errors: string[];
+  duplicates: number;
+};
+
 export type SkillProvider = {
   registry: SkillRegistryController;
-  searcher: (query: string) => SkillSearchResult;
+  searcher: SkillSearcher;
+  debug?: SkillRegistryDebugInfo;
 };

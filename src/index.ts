@@ -56,8 +56,7 @@ async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
 
 export const SkillsPlugin: Plugin = async (ctx) => {
   const config = await getPluginConfig(ctx);
-  // Discovery order: lowest to highest priority (last wins on duplicate tool names)
-  const provider = createSkillProvider(await createSkillRegistry(ctx, config));
+  const provider = createSkillProvider(await createSkillRegistry(config));
 
   return {
     tool: {

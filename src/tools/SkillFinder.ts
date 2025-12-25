@@ -40,12 +40,25 @@ Use '*' to list all skills.`,
         )
         .join('\n');
 
+      const debugInfo = provider.debug
+        ? `
+  <Debug>
+    <Discovered>${provider.debug.discovered}</Discovered>
+    <Parsed>${provider.debug.parsed}</Parsed>
+    <Rejected>${provider.debug.rejected}</Rejected>
+    <Duplicates>${provider.debug.duplicates}</Duplicates>
+    <Errors>
+      ${provider.debug.errors.map((e) => `<Error>${e}</Error>`).join('\n')}
+    </Errors>
+  </Debug>`
+        : '';
+
       return `<SkillSearchResults query="${args.query}">
 ${results}
 <Summary>
   <Total>${provider.registry.skills.length}</Total>
   <Matches>${result.totalMatches}</Matches>
-  <Feedback>${result.feedback}</Feedback>
+  <Feedback>${result.feedback}</Feedback>${debugInfo}
 </Summary>
 </SkillSearchResults>`;
     },
