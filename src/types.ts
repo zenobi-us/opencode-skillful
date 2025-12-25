@@ -68,6 +68,13 @@ export type PluginConfig = {
   basePaths: string | string[];
 };
 
+export type PluginLogger = {
+  debug: (...message: unknown[]) => void;
+  log: (...message: unknown[]) => void;
+  error: (...message: unknown[]) => void;
+  warn: (...message: unknown[]) => void;
+};
+
 /**
  * Skill registry map type
  */
@@ -101,4 +108,5 @@ export type SkillProvider = {
   registry: SkillRegistryController;
   searcher: SkillSearcher;
   debug?: SkillRegistryDebugInfo;
+  logger: PluginLogger;
 };

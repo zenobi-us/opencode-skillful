@@ -11,9 +11,11 @@ describe('ScriptResourceExecutor', () => {
     const registry = mockRegistryController([]);
     mockProvider = {
       registry,
+      logger: console,
       searcher: (query: string) => ({
         matches: [],
         totalMatches: 0,
+        totalSkills: 0,
         feedback: '',
         query: {
           include: [],

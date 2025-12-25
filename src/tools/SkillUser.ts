@@ -12,6 +12,7 @@ const unorderedList = <T extends { path: string }>(items: T[], labelFn: (item: T
 
 export function createUseSkillsTool(ctx: PluginInput, provider: SkillProvider): ToolDefinition {
   const skillLoader = createSkillLoader(provider.registry);
+  const sendPrompt = createInstructionInjector(ctx);
 
   return tool({
     description:
@@ -22,7 +23,6 @@ export function createUseSkillsTool(ctx: PluginInput, provider: SkillProvider): 
         .min(1, 'Must provide at least one skill name'),
     },
     execute: async (args, toolCtx: ToolContext) => {
-      const sendPrompt = createInstructionInjector(ctx);
       const results = await skillLoader(args.skill_names, async (content: string) => {
         sendPrompt(content, { sessionId: toolCtx.sessionID });
       });

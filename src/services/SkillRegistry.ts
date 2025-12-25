@@ -11,6 +11,7 @@ import { dirname, basename, sep, join } from 'node:path';
 import { lstat } from 'node:fs/promises';
 import matter from 'gray-matter';
 import mime from 'mime';
+import { log } from './logger';
 
 type DiscoveredSkillPath = {
   basePath: string;
@@ -72,6 +73,11 @@ export async function createSkillRegistry(
 
   // Find all SKILL.md files recursively
   const matches = await findSkillPaths(config.basePaths);
+  log(
+    'discovered',
+    matches.map((m) => m.absolutePath)
+  );
+
   debug.discovered = matches.length;
 
   const dupes: string[] = [];
@@ -222,22 +228,23 @@ async function findSkillPaths(basePaths: string | string[]): Promise<DiscoveredS
   const glob = new Bun.Glob('**/SKILL.md');
 
   for (const basePath of basePathsArray) {
+    log('scanning', basePath);
+    let count = results.length;
     try {
-      const stat = await lstat(basePath).catch(() => null);
-      if (!stat?.isDirectory()) {
-        continue;
-      }
-
       for await (const match of glob.scan({ cwd: basePath, absolute: true })) {
         results.push({
           basePath,
           absolutePath: match,
         });
       }
-    } catch {
+      log('foundSkills', { basePath, count: results.length - count });
+    } catch (error) {
+      log('errorScanningSkills', { basePath, error });
       continue;
     }
   }
+
+  log('totalSkillsFound', results.length);
 
   return results;
 }

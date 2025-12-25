@@ -37,6 +37,7 @@ describe('SkillResourceResolver', () => {
 
     mockRegistry = {
       registry: controller,
+      logger: console,
       searcher: vi.fn(() => ({
         matches: [],
         totalMatches: 0,

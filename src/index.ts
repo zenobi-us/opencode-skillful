@@ -32,12 +32,12 @@ import envPaths from 'env-paths';
 import { mergeDeepLeft } from 'ramda';
 
 import type { PluginConfig } from './types';
-import { createSkillRegistry } from './services/SkillRegistry';
 import { createToolResourceReader } from './tools/SkillResourceReader';
 import { createUseSkillsTool } from './tools/SkillUser';
 import { createFindSkillsTool } from './tools/SkillFinder';
 import { createSkillScriptExecTool } from './tools/SkillScriptExec';
 import { createSkillProvider } from './services/SkillProvider';
+import { createSkillRegistry } from './services/SkillRegistry';
 
 const OpenCodePaths = envPaths('opencode', { suffix: '' });
 
@@ -56,7 +56,10 @@ async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
 
 export const SkillsPlugin: Plugin = async (ctx) => {
   const config = await getPluginConfig(ctx);
-  const provider = createSkillProvider(await createSkillRegistry(config));
+  const provider = await createSkillProvider({
+    config,
+    ...(await createSkillRegistry(config)),
+  });
 
   return {
     tool: {

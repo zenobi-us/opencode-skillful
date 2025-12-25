@@ -1,5 +1,11 @@
 import { vi } from 'vitest';
-import type { Skill, SkillProvider, SkillRegistryController, SkillSearchResult } from './types';
+import type {
+  Skill,
+  SkillProvider,
+  SkillRegistryController,
+  SkillRegistryDebugInfo,
+  SkillSearchResult,
+} from './types';
 import { createSkillProvider } from './services/SkillProvider';
 
 /**
@@ -42,9 +48,15 @@ export function mockRegistryController(skills: Skill[] = []): SkillRegistryContr
  * @param skills Array of skills to include in the provider
  * @returns A mock skill provider
  */
-export function mockProvider(skills: Skill[] = []): SkillProvider {
+export async function mockProvider(skills: Skill[] = []): Promise<SkillProvider> {
   const controller = mockRegistryController(skills);
-  return createSkillProvider(controller);
+  const config = createMockConfig();
+  const debug = createMockDebug();
+  return await createSkillProvider({
+    config,
+    controller,
+    debug,
+  });
 }
 
 /**
@@ -57,7 +69,31 @@ export function mockSearchResult(overrides: Partial<SkillSearchResult> = {}): Sk
     matches: [],
     totalMatches: 0,
     feedback: 'No results found',
-    query: {} as any,
+    totalSkills: 0,
+    query: {
+      exclude: [],
+      hasExclusions: false,
+      include: [],
+      originalQuery: '',
+      termCount: 0,
+    },
     ...overrides,
+  };
+}
+
+function createMockDebug(): SkillRegistryDebugInfo {
+  return {
+    parsed: 0,
+    discovered: 0,
+    duplicates: 0,
+    errors: [],
+    rejected: 0,
+  };
+}
+
+function createMockConfig() {
+  return {
+    debug: false,
+    basePaths: ['/mock/path/to/skills'],
   };
 }
