@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseQuery, rankSkill, shouldIncludeSkill, generateFeedback } from './SkillSearcher';
-import { mockSkill } from '../mocks';
+import { createMockSkill } from '../mocks';
 import type { Skill } from '../types';
 
 describe('parseQuery', () => {
@@ -93,7 +93,7 @@ describe('parseQuery', () => {
 
 describe('rankSkill', () => {
   it('should give exact name match maximum score', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'git',
       description: 'version control',
     });
@@ -105,7 +105,7 @@ describe('rankSkill', () => {
   });
 
   it('should not give exact bonus for multi-term queries', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'git',
       description: 'version control',
     });
@@ -117,7 +117,7 @@ describe('rankSkill', () => {
   });
 
   it('should score name matches higher than description matches', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'git-commit',
       description: 'writing guides',
     });
@@ -129,7 +129,7 @@ describe('rankSkill', () => {
   });
 
   it('should count one match per term regardless of occurrences', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'git-git-git-workflow',
       description: 'patterns',
     });
@@ -142,7 +142,7 @@ describe('rankSkill', () => {
   });
 
   it('should count description matches when term not in name', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'workflow',
       description: 'git patterns and git control',
     });
@@ -155,7 +155,7 @@ describe('rankSkill', () => {
   });
 
   it('should handle multiple search terms', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'git-commit-workflow',
       description: 'guide for version control',
     });
@@ -167,7 +167,7 @@ describe('rankSkill', () => {
   });
 
   it('should handle no matching terms', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'testing',
       description: 'test patterns',
     });
@@ -179,7 +179,7 @@ describe('rankSkill', () => {
   });
 
   it('should perform case-insensitive matching', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'Git-Commit',
       description: 'Git Workflow',
     });
@@ -190,7 +190,7 @@ describe('rankSkill', () => {
   });
 
   it('should handle partial term matching', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'github-actions',
       description: 'version control automation',
     });
@@ -203,7 +203,7 @@ describe('rankSkill', () => {
   });
 
   it('should return skill object in result', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'test',
       description: 'test desc',
     });
@@ -213,7 +213,7 @@ describe('rankSkill', () => {
   });
 
   it('should handle empty include terms array', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'git',
       description: 'version control',
     });
@@ -225,7 +225,7 @@ describe('rankSkill', () => {
   });
 
   it('should count only first match per term', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'git workflow',
       description: 'git is used in workflow',
     });
@@ -239,7 +239,7 @@ describe('rankSkill', () => {
 
 describe('shouldIncludeSkill', () => {
   it('should include skill when no exclusions', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'python-guide',
       description: 'Python basics',
     });
@@ -249,7 +249,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should exclude skill matching single exclusion term in name', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'python-guide',
       description: 'guide',
     });
@@ -259,7 +259,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should exclude skill matching exclusion term in description', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'guide',
       description: 'Python programming',
     });
@@ -269,7 +269,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should exclude skill matching any exclusion term', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'python-javascript-guide',
       description: 'Multi-language guide',
     });
@@ -279,7 +279,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should perform case-insensitive matching', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'Python-Guide',
       description: 'Guide content',
     });
@@ -289,7 +289,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should match partial terms (substrings)', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'deprecated-guide',
       description: 'Old patterns',
     });
@@ -299,7 +299,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should include skill not matching any exclusion', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'rust-guide',
       description: 'Rust programming',
     });
@@ -309,7 +309,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should handle multiple exclusion terms correctly', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'general-guide',
       description: 'General programming patterns',
     });
@@ -319,7 +319,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should check both name and description together', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'api-guide',
       description: 'deprecated patterns',
     });
@@ -329,7 +329,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should handle empty skill name and description', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: '',
       description: '',
     });
@@ -339,7 +339,7 @@ describe('shouldIncludeSkill', () => {
   });
 
   it('should handle special characters in exclusion terms', () => {
-    const skill: Skill = mockSkill({
+    const skill: Skill = createMockSkill({
       name: 'c++-guide',
       description: 'C++ programming',
     });
@@ -546,9 +546,9 @@ describe('SkillSearcher - Edge Cases', () => {
   describe('Ranking tie-breaking', () => {
     it('should sort by name alphabetically when scores equal', () => {
       const skills: Skill[] = [
-        mockSkill({ name: 'zebra-api', description: 'api reference' }),
-        mockSkill({ name: 'api-guide', description: 'api reference' }),
-        mockSkill({ name: 'api-design', description: 'api reference' }),
+        createMockSkill({ name: 'zebra-api', description: 'api reference' }),
+        createMockSkill({ name: 'api-guide', description: 'api reference' }),
+        createMockSkill({ name: 'api-design', description: 'api reference' }),
       ];
 
       const results = skills
@@ -571,8 +571,8 @@ describe('SkillSearcher - Edge Cases', () => {
 
     it('should prioritize higher scores over alphabetical order', () => {
       const skills: Skill[] = [
-        mockSkill({ name: 'aaa-skill', description: 'no match' }),
-        mockSkill({ name: 'zzzapi', description: 'no match' }),
+        createMockSkill({ name: 'aaa-skill', description: 'no match' }),
+        createMockSkill({ name: 'zzzapi', description: 'no match' }),
       ];
 
       const results = skills
@@ -592,8 +592,8 @@ describe('SkillSearcher - Edge Cases', () => {
 
     it('should handle exact match bonus in tie-breaking', () => {
       const skills: Skill[] = [
-        mockSkill({ name: 'git', description: 'version control' }),
-        mockSkill({ name: 'github', description: 'git hosting' }),
+        createMockSkill({ name: 'git', description: 'version control' }),
+        createMockSkill({ name: 'github', description: 'git hosting' }),
       ];
 
       const results = skills
@@ -689,7 +689,7 @@ describe('SkillSearcher - Edge Cases', () => {
 
   describe('Ranking with special cases', () => {
     it('should handle skills with empty descriptions', () => {
-      const skill = mockSkill({ name: 'test', description: '' });
+      const skill = createMockSkill({ name: 'test', description: '' });
       const result = rankSkill(skill, ['test']);
 
       expect(result.nameMatches).toBe(1);
@@ -698,21 +698,21 @@ describe('SkillSearcher - Edge Cases', () => {
 
     it('should handle very long skill names', () => {
       const longName = 'a'.repeat(500);
-      const skill = mockSkill({ name: longName, description: 'description' });
+      const skill = createMockSkill({ name: longName, description: 'description' });
       const result = rankSkill(skill, ['a']);
 
       expect(result.nameMatches).toBe(1);
     });
 
     it('should handle numeric terms in queries', () => {
-      const skill = mockSkill({ name: 'python3-guide', description: 'Python 3 tutorial' });
+      const skill = createMockSkill({ name: 'python3-guide', description: 'Python 3 tutorial' });
       const result = rankSkill(skill, ['3']);
 
       expect(result.totalScore).toBeGreaterThan(0);
     });
 
     it('should handle scores with many matches', () => {
-      const skill = mockSkill({
+      const skill = createMockSkill({
         name: 'api-api-api',
         description: 'api api api api',
       });

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createMockProvider, createMockSkill } from '../mocks';
 import { createScriptResourceExecutor } from './ScriptResourceExecutor';
-import { mockRegistryController } from '../mocks';
 import type { SkillProvider } from '../types';
 
 describe('ScriptResourceExecutor', () => {
@@ -8,24 +8,15 @@ describe('ScriptResourceExecutor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const registry = mockRegistryController([]);
-    mockProvider = {
-      registry,
-      logger: console,
-      searcher: (query: string) => ({
-        matches: [],
-        totalMatches: 0,
-        totalSkills: 0,
-        feedback: '',
-        query: {
-          include: [],
-          exclude: [],
-          originalQuery: query,
-          hasExclusions: false,
-          termCount: 0,
+
+    mockProvider = createMockProvider([
+      createMockSkill({
+        name: 'test_skill',
+        scripts: {
+          'script.sh': { mimetype: 'application/x-sh' },
         },
       }),
-    };
+    ]);
   });
 
   describe('Basic Script Execution', () => {
@@ -135,18 +126,6 @@ describe('ScriptResourceExecutor', () => {
       } catch (error) {
         expect(error).toBeDefined();
       }
-    });
-  });
-
-  describe('Environment Setup', () => {
-    it('should have access to skill provider registry', () => {
-      const _executor = createScriptResourceExecutor(mockProvider);
-      expect(mockProvider.registry).toBeDefined();
-    });
-
-    it('should have access to skill provider searcher', () => {
-      const _executor = createScriptResourceExecutor(mockProvider);
-      expect(mockProvider.searcher).toBeDefined();
     });
   });
 });

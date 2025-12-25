@@ -7,13 +7,15 @@ import type {
   SkillSearchResult,
 } from './types';
 import { createSkillProvider } from './services/SkillProvider';
+import { createSkillRegistryController } from './services/SkillRegistry';
+import { createLogger } from './services/logger';
 
 /**
  * Creates a mock Skill object with sensible defaults
  * @param overrides Partial skill properties to override defaults
  * @returns A complete Skill object
  */
-export function mockSkill(overrides: Partial<Skill> = {}): Skill {
+export function createMockSkill(overrides: Partial<Skill> = {}): Skill {
   return {
     name: 'test-skill',
     description: 'A test skill',
@@ -21,9 +23,9 @@ export function mockSkill(overrides: Partial<Skill> = {}): Skill {
     toolName: 'test_skill',
     path: '/path/to/skill/SKILL.md',
     content: 'Test content',
-    scripts: [],
-    references: [],
-    assets: [],
+    scripts: {},
+    references: {},
+    assets: {},
     ...overrides,
   };
 }
@@ -33,14 +35,8 @@ export function mockSkill(overrides: Partial<Skill> = {}): Skill {
  * @param skills Array of skills to include in the registry
  * @returns A mock registry controller
  */
-export function mockRegistryController(skills: Skill[] = []): SkillRegistryController {
-  return {
-    skills,
-    ids: skills.map((s) => s.toolName),
-    has: vi.fn((key: string) => skills.some((s) => s.toolName === key)),
-    get: vi.fn((key: string) => skills.find((s) => s.toolName === key)),
-    add: vi.fn(),
-  };
+export function createMockRegistryController(skills: Skill[] = []): SkillRegistryController {
+  return createSkillRegistryController(skills);
 }
 
 /**
@@ -48,14 +44,16 @@ export function mockRegistryController(skills: Skill[] = []): SkillRegistryContr
  * @param skills Array of skills to include in the provider
  * @returns A mock skill provider
  */
-export async function mockProvider(skills: Skill[] = []): Promise<SkillProvider> {
-  const controller = mockRegistryController(skills);
+export function createMockProvider(skills: Skill[] = []): SkillProvider {
+  const controller = createMockRegistryController(skills);
   const config = createMockConfig();
   const debug = createMockDebug();
-  return await createSkillProvider({
+  const logger = createLogger(config);
+  return createSkillProvider({
     config,
     controller,
     debug,
+    logger,
   });
 }
 
@@ -79,6 +77,25 @@ export function mockSearchResult(overrides: Partial<SkillSearchResult> = {}): Sk
     },
     ...overrides,
   };
+}
+
+/**
+ * Creates a fully configured mock search result with skill matches and metadata
+ * @param skills Array of skill matches to include in the result
+ * @param overrides Additional overrides for search result properties
+ * @returns A complete search result with proper structure
+ */
+export function mockFullSearchResult(
+  skills: Skill[] = [],
+  overrides: Partial<SkillSearchResult> = {}
+): SkillSearchResult {
+  return mockSearchResult({
+    matches: skills,
+    totalMatches: skills.length,
+    totalSkills: skills.length,
+    feedback: skills.length > 0 ? `Found ${skills.length} matches` : 'No results found',
+    ...overrides,
+  });
 }
 
 function createMockDebug(): SkillRegistryDebugInfo {

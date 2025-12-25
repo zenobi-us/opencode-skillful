@@ -38,6 +38,7 @@ import { createFindSkillsTool } from './tools/SkillFinder';
 import { createSkillScriptExecTool } from './tools/SkillScriptExec';
 import { createSkillProvider } from './services/SkillProvider';
 import { createSkillRegistry } from './services/SkillRegistry';
+import { createLogger } from './services/logger';
 
 const OpenCodePaths = envPaths('opencode', { suffix: '' });
 
@@ -56,9 +57,11 @@ async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
 
 export const SkillsPlugin: Plugin = async (ctx) => {
   const config = await getPluginConfig(ctx);
+  const logger = createLogger(config);
   const provider = await createSkillProvider({
     config,
-    ...(await createSkillRegistry(config)),
+    logger,
+    ...(await createSkillRegistry(config, logger)),
   });
 
   return {

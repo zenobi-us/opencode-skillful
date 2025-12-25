@@ -1,18 +1,17 @@
-import { PluginConfig, SkillProvider } from '../types';
-import { createLogger } from './logger';
+import { PluginConfig, PluginLogger, SkillProvider } from '../types';
 import { createSkillRegistry } from './SkillRegistry';
 import { createSkillSearcher } from './SkillSearcher';
 
-export async function createSkillProvider(
+export function createSkillProvider(
   args: {
     config: PluginConfig;
+    logger: PluginLogger;
   } & Awaited<ReturnType<typeof createSkillRegistry>>
-): Promise<SkillProvider> {
-  const logger = createLogger(args.config);
+): SkillProvider {
   return {
     registry: args.controller,
     searcher: createSkillSearcher(args.controller),
     debug: args.debug,
-    logger,
+    logger: args.logger,
   };
 }

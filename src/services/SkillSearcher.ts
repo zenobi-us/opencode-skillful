@@ -8,7 +8,7 @@ import type {
   SkillRegistryController,
   SkillSearcher,
 } from '../types';
-import { normalizePathQuery, stripSkillsPrefix } from '../identifiers';
+import { normalizePathQuery, stripSkillsPrefix } from './identifiers';
 
 /**
  * Parse a user query into structured search terms

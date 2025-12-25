@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createSkillResourceResolver } from './SkillResourceResolver';
 import type { SkillProvider } from '../types';
-import { mockSkill } from '../mocks';
+import { createMockProvider, createMockSkill } from '../mocks';
 
 /**
  * Unit tests for SkillResourceResolver service
@@ -13,45 +13,32 @@ describe('SkillResourceResolver', () => {
   let mockRegistry: SkillProvider;
 
   beforeEach(() => {
-    const testSkill = mockSkill({
+    const testSkill = createMockSkill({
       name: 'test-skill',
       fullPath: '/skills/test-skill',
       toolName: 'test_skill',
       description: 'Test skill',
       content: '# Test Skill',
       path: '/skills/test-skill/SKILL.md',
+      scripts: {
+        'build.sh': { mimetype: 'application/x-sh' },
+      },
+      references: {
+        'guide.md': { mimetype: 'text/markdown' },
+      },
+      assets: {
+        'logo.svg': { mimetype: 'image/svg+xml' },
+      },
     });
 
-    const controller = {
-      skills: [testSkill],
-      ids: ['test_skill'],
-      has: vi.fn((key: string) => key === 'test_skill' || key === 'test-skill'),
-      get: vi.fn((key: string) => {
-        if (key === 'test_skill' || key === 'test-skill') {
-          return testSkill;
-        }
-        return undefined;
-      }),
-      add: vi.fn(),
-    };
-
-    mockRegistry = {
-      registry: controller,
-      logger: console,
-      searcher: vi.fn(() => ({
-        matches: [],
-        totalMatches: 0,
-        feedback: '',
-        totalSkills: 1,
-        query: {
-          include: [],
-          exclude: [],
-          originalQuery: '',
-          hasExclusions: false,
-          termCount: 0,
-        },
-      })),
-    };
+    mockRegistry = createMockProvider([testSkill]);
+    // Update the registry.get mock to handle both formats
+    vi.mocked(mockRegistry.registry.get).mockImplementation((key: string) => {
+      if (key === 'test_skill' || key === 'test-skill') {
+        return testSkill;
+      }
+      return undefined;
+    });
 
     resolver = createSkillResourceResolver(mockRegistry);
   });

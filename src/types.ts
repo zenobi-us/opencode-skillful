@@ -3,6 +3,13 @@
  */
 
 /**
+ * Skill resource map type
+ * Key: relative path
+ * Value: object with mimetype
+ */
+export type SkillResourceMap = Record<string, { mimetype: string }>;
+
+/**
  * Skill definition parsed from SKILL.md
  */
 export type Skill = {
@@ -15,9 +22,9 @@ export type Skill = {
   license?: string;
   content: string; // Markdown body
   path: string; // Full path to SKILL.md
-  scripts: { path: string }[]; // Script resources
-  references: { path: string; mimetype: string }[]; // Other resources
-  assets: { path: string; mimetype: string }[]; // Other resources
+  scripts: Record<string, { mimetype: string }>; // Script resources
+  references: Record<string, { mimetype: string }>; // Other resources
+  assets: Record<string, { mimetype: string }>; // Other resources
 };
 
 /**

@@ -1,34 +1,29 @@
 import * as Bun from 'bun';
-import { resolve, join, sep } from 'path';
 import type { Skill, SkillProvider } from '../types';
+import path from 'node:path';
 
-function resolveSkillResourcePath(args: {
-  skill: Skill;
-  type: 'script' | 'asset' | 'reference';
-  relative_path: string;
-}): string {
-  try {
-    // Normalise the resource path to avoid mishaps.
-    const scriptPath = args.relative_path.replace(`$${sep}`, '').replace(`${args.type}${sep}`, '');
-    const skillTypeDir = resolve(join(args.skill.fullPath, args.type));
-    const resourcePath = resolve(join(skillTypeDir, scriptPath));
-
-    // Verify the resolved path is within the skill's type directory
-    // This prevents path traversal attacks like ../../../etc/passwd
-    if (!resourcePath.startsWith(skillTypeDir + sep) && resourcePath !== skillTypeDir) {
-      throw new Error(
-        `Path traversal attempt detected: resolved path ${resourcePath} is outside skill directory ${skillTypeDir}`
-      );
-    }
-
-    return resourcePath;
-  } catch (error) {
-    throw new Error(
-      `Failed to resolve resource path: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-}
+/**
+ * Skill resources are mapped on startup as a dictionary of relative paths to resource metadata.
+ *
+ * This resolver uses that mapping to solve several things:
+ *
+ * - locate and read the actual resource files.
+ * - ensure the requested path isn't outside the skill directory (security).
+ * - return the content and mime type of the resource.
+ */
 export function createSkillResourceResolver(provider: SkillProvider) {
+  const resolveResourceMap = (skill: Skill, type: 'script' | 'asset' | 'reference') => {
+    if (type === 'script') {
+      return skill.scripts;
+    } else if (type === 'asset') {
+      return skill.assets;
+    } else if (type === 'reference') {
+      return skill.references;
+    } else {
+      throw new Error(`Unknown resource type: ${type}`);
+    }
+  };
+
   return async (args: {
     skill_name: string;
     type: 'script' | 'asset' | 'reference';
@@ -44,11 +39,16 @@ export function createSkillResourceResolver(provider: SkillProvider) {
       throw new Error(`Skill not found: ${args.skill_name}`);
     }
 
-    const resourcePath = resolveSkillResourcePath({
-      skill,
-      type: args.type,
-      relative_path: args.relative_path,
-    });
+    const resourceMap = resolveResourceMap(skill, args.type);
+    const resource = resourceMap[args.relative_path];
+
+    if (!resource) {
+      throw new Error(
+        `Resource not found: Skill "${args.skill_name}" does not have a ${args.type} at path "${args.relative_path}"`
+      );
+    }
+
+    const resourcePath = path.join(skill.fullPath, args.relative_path);
 
     try {
       const file = Bun.file(resourcePath);

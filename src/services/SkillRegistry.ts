@@ -1,17 +1,19 @@
 import { tool } from '@opencode-ai/plugin';
 import {
   PluginConfig,
+  PluginLogger,
   Skill,
   SkillRegistry,
   SkillRegistryController,
   SkillRegistryDebugInfo,
+  SkillResourceMap,
 } from '../types';
 
 import { dirname, basename, sep, join } from 'node:path';
 import { lstat } from 'node:fs/promises';
 import matter from 'gray-matter';
 import mime from 'mime';
-import { log } from './logger';
+import { toolName } from './identifiers';
 
 type DiscoveredSkillPath = {
   basePath: string;
@@ -28,8 +30,10 @@ const SkillFrontmatterSchema = tool.schema.object({
   metadata: tool.schema.record(tool.schema.string(), tool.schema.string()).optional(),
 });
 
-function createSkillRegistryController(): SkillRegistryController {
-  const registry: SkillRegistry = new Map();
+export function createSkillRegistryController(skills?: Skill[]): SkillRegistryController {
+  const registry: SkillRegistry = new Map(
+    !skills ? [] : skills.map((skill) => [skill.toolName, skill])
+  );
 
   return {
     get skills() {
@@ -50,7 +54,8 @@ function createSkillRegistryController(): SkillRegistryController {
  * SkillRegistry manages skill discovery and parsing
  */
 export async function createSkillRegistry(
-  config: PluginConfig
+  config: PluginConfig,
+  logger: PluginLogger
 ): Promise<{ controller: SkillRegistryController; debug: SkillRegistryDebugInfo }> {
   /**
    * Skill Registry Map
@@ -73,7 +78,7 @@ export async function createSkillRegistry(
 
   // Find all SKILL.md files recursively
   const matches = await findSkillPaths(config.basePaths);
-  log(
+  logger.debug(
     'discovered',
     matches.map((m) => m.absolutePath)
   );
@@ -114,22 +119,6 @@ export async function createSkillRegistry(
  */
 function inferResourceType(filePath: string): string {
   return mime.getType(filePath) || 'application/octet-stream';
-}
-
-/**
- * Generate tool name from skill path
- * Examples:
- *   skills/brand-guidelines/SKILL.md → skills_brand_guidelines
- *   skills/document-skills/docx/SKILL.md → skills_document_skills_docx
- *   skills/image-processing/SKILL.md → skills_image_processing
- */
-function toolName(skillPath: string): string {
-  return skillPath
-    .replace(/SKILL\.md$/, '')
-    .split(sep)
-    .filter(Boolean)
-    .join('_')
-    .replace(/-/g, '_');
 }
 
 /**
@@ -186,10 +175,22 @@ async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null>
     metadata: frontmatter.data.metadata,
     name: shortName,
     path: skillPath.absolutePath,
-    scripts: scriptPaths.map((p) => ({ path: p })),
-    references: referencePaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
-    assets: assetPaths.map((p) => ({ path: p, mimetype: inferResourceType(p) })),
+    scripts: createSkillResourceMap(scriptPaths),
+    references: createSkillResourceMap(referencePaths),
+    assets: createSkillResourceMap(assetPaths),
   };
+}
+
+export function createSkillResourceMap(filePaths: string[]): SkillResourceMap {
+  const output: SkillResourceMap = {};
+
+  for (const filePath of filePaths) {
+    output[filePath] = {
+      mimetype: inferResourceType(filePath),
+    };
+  }
+
+  return output;
 }
 
 /**
@@ -228,8 +229,6 @@ async function findSkillPaths(basePaths: string | string[]): Promise<DiscoveredS
   const glob = new Bun.Glob('**/SKILL.md');
 
   for (const basePath of basePathsArray) {
-    log('scanning', basePath);
-    let count = results.length;
     try {
       for await (const match of glob.scan({ cwd: basePath, absolute: true })) {
         results.push({
@@ -237,14 +236,10 @@ async function findSkillPaths(basePaths: string | string[]): Promise<DiscoveredS
           absolutePath: match,
         });
       }
-      log('foundSkills', { basePath, count: results.length - count });
-    } catch (error) {
-      log('errorScanningSkills', { basePath, error });
+    } catch {
       continue;
     }
   }
-
-  log('totalSkillsFound', results.length);
 
   return results;
 }
