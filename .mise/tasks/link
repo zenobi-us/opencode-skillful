@@ -1,0 +1,8 @@
+#!/bin/bash
+
+#MISE depends=["setup", "build"]
+
+mkdir -p ~/.config/opencode/plugin
+ln -sf "$PWD/dist/index.js" ~/.config/opencode/plugin/opencode-skillful.js
+
+ls -al ~/.config/opencode/plugin/

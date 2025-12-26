@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Build the project"
+#MISE sources=["src/**/*"]
+#MISE outputs=["dist/index.js"]
+
 bun build ./src/index.ts --outdir dist --target bun

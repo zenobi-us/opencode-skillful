@@ -2,7 +2,7 @@
 
 An interpretation of the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills) for OpenCode, providing lazy-loaded skill discovery and injection.
 
-Differenator is : 
+Differenator is :
 
 - Conversationally the agent uses `skill_find words, words words` to discover skills
 - The agent uses `skill_use fully_resolved_skill_name` and,
@@ -132,25 +132,42 @@ skill_resource
 
 Search for skills using natural query syntax.
 
+**Parameters:**
+
 - `query`: Search string supporting:
   - `*` or empty: List all skills
-  - Path prefixes: `experts`, `superpowers/writing`
-  - Keywords: `git commit`
-  - Negation: `-term`
-  - Quoted phrases: `"exact match"`
+  - Path prefixes: `experts`, `superpowers/writing` (prefix matching)
+  - Keywords: `git commit` (multiple terms use AND logic)
+  - Negation: `-term` (exclude results)
+  - Quoted phrases: `"exact match"` (phrase matching)
+
+**Returns:** Matching skills with name and fully-qualified toolName (FQDN).
 
 ### `skill_use`
 
 Load one or more skills into the chat context.
 
-- `skill_names`: Array of skill names to load (by toolName or short name)
+**Parameters:**
+
+- `skill_names`: Array of skill names to load (by toolName/FQDN or short name)
+
+**Features:**
+
+- Injects skill metadata and content with:
+  - Skill resources available via `skill_resource(skillname, resourcename)`
+  - Base directory context for relative path resolution
+  - Full skill content formatted as Markdown for easy reading
 
 ### `skill_resource`
 
-Read a resource file from a skill's directory.
+Read a resource file from a skill's directory and inject silently into the chat.
 
-- `skill_name`: The skill containing the resource
+**Parameters:**
+
+- `skill_name`: The skill containing the resource (by toolName/FQDN or short name)
 - `relative_path`: Path to the resource relative to the skill directory
+
+**Behavior:** Silently injects resource content without triggering AI response (noReply pattern)
 
 ## Creating Skills
 
