@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.0](https://github.com/zenobi-us/opencode-skillful/compare/v1.0.0...v1.1.0) (2025-12-26)
+
+
+### Features
+
+* **tools:** skill shell expansion and skill resource execution ([#8](https://github.com/zenobi-us/opencode-skillful/issues/8)) ([50c91c5](https://github.com/zenobi-us/opencode-skillful/commit/50c91c53d8a4820e9412a33e4755cc22084749ef))
+
+
+### Bug Fixes
+
+* add prerelease version bump for next tag publishes ([#7](https://github.com/zenobi-us/opencode-skillful/issues/7)) ([2f35a03](https://github.com/zenobi-us/opencode-skillful/commit/2f35a039f297a7e42eb78f28c3251b86a0716f76))
+* fetch git tags in publish workflow for proper version detection ([e662333](https://github.com/zenobi-us/opencode-skillful/commit/e662333666f3885051d901239971dbb12093a45d))
+* **publish:** invert dry-run condition to enable CI publishing ([#10](https://github.com/zenobi-us/opencode-skillful/issues/10)) ([5e61cb0](https://github.com/zenobi-us/opencode-skillful/commit/5e61cb025b30c22bc638dce3ecfa6f70f246f581))
+* **skills:** use Bun.glob for cross-platform path discovery with proper types ([#5](https://github.com/zenobi-us/opencode-skillful/issues/5)) ([ae66c87](https://github.com/zenobi-us/opencode-skillful/commit/ae66c8722be44249a351856a1e4d015022558cce))
+
 ## 1.0.0 (2025-12-04)
 
 
