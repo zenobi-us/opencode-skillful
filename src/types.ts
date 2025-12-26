@@ -3,14 +3,32 @@
  */
 
 /**
- * Skill resource map type
- * Key: relative path
- * Value: object with mimetype
+ * Skill resource map type for indexing skill resources
+ *
+ * A Map of relative paths to resource metadata. Used to securely resolve
+ * and access skill resources without allowing path traversal attacks.
+ *
+ * Key: relative path to the resource (e.g., "scripts/build.sh", "references/README.md")
+ * Value: resource metadata
+ *   - absolutePath: absolute filesystem path (pre-validated during skill initialization)
+ *   - mimeType: detected MIME type for proper content handling
+ *
+ * Example:
+ *   Map {
+ *     "scripts/build.sh" => { absolutePath: "/skills/cli/scripts/build.sh", mimeType: "application/x-sh" },
+ *     "references/api.md" => { absolutePath: "/skills/cli/references/api.md", mimeType: "text/markdown" }
+ *   }
  */
 export type SkillResourceMap = Map<string, { absolutePath: string; mimeType: string }>;
 
 /**
  * Skill definition parsed from SKILL.md
+ *
+ * Represents a complete skill including metadata and indexed resources.
+ * Resources are pre-indexed at skill initialization to enable:
+ * - Safe path traversal prevention (all paths are pre-validated)
+ * - Fast lookup by relative path
+ * - MIME type detection for proper content handling
  */
 export type Skill = {
   name: string; // From frontmatter (e.g., "brand-guidelines")
@@ -22,9 +40,9 @@ export type Skill = {
   license?: string;
   content: string; // Markdown body
   path: string; // Full path to SKILL.md
-  scripts: SkillResourceMap; // Script resources
-  references: SkillResourceMap; // Other resources
-  assets: SkillResourceMap; // Asset resources
+  scripts: SkillResourceMap; // Indexed script resources (e.g., build.sh, test.sh)
+  references: SkillResourceMap; // Indexed reference resources (e.g., documentation, guides)
+  assets: SkillResourceMap; // Indexed asset resources (e.g., images, icons)
 };
 
 /**
