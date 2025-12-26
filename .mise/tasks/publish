@@ -26,11 +26,13 @@ if [ "${usage_tag}" = "next" ]; then
 	CURRENT_VERSION=$(jq -r '.version' package.json)
 	PRERELEASE_VERSION="$(semver get release "$CURRENT_VERSION")-next.${BUILD_NUMBER}"
 	echo " > bumping version: ${CURRENT_VERSION} -> ${PRERELEASE_VERSION}"
+
+	if [ "${usage_dry_run}" != true ]; then
+		npm version "${PRERELEASE_VERSION}" --no-git-tag-version --allow-same-version
+	fi
 fi
 
-if [ "${usage_dry_run}" = true ]; then
-	npm version "${PRERELEASE_VERSION}" --no-git-tag-version --allow-same-version
-
+if [ "${usage_dry_run}" != true ]; then
 	# Determine if we should use provenance
 	# Only enable in CI environments with OIDC support
 	PROVENANCE_FLAG=""
@@ -49,4 +51,6 @@ if [ "${usage_dry_run}" = true ]; then
 		--tag "${usage_tag}" \
 		$PROVENANCE_FLAG
 	echo "Published successfully!"
+else
+	echo "Dry run mode - skipping actual publish"
 fi
