@@ -86,7 +86,7 @@ export type SkillRegistry = Map<string, Skill>;
 /**
  * Skill searcher function type
  */
-export type SkillSearcher = (_query: string) => SkillSearchResult;
+export type SkillSearcher = (_query: string | string[]) => SkillSearchResult;
 
 /**
  * Skill registry controller interface

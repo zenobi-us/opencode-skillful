@@ -31,15 +31,7 @@ export function createToolResourceReader(
 
       // Inject content silently
       await sendPrompt(
-        `
----
-    skill: ${args.skill_name}
-resource: ${args.relative_path}
-mimeType: ${resource.mimeType}
----
-
-    ${resource.content}
-    `,
+        `<Resource skill="${args.skill_name}" path="${args.relative_path}" type="${resource.mimeType}">${resource.content}</Resource>`,
         { sessionId: toolCtx.sessionID }
       );
 
