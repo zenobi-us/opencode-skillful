@@ -146,7 +146,7 @@ describe('SkillSearcher', () => {
       const searcher = createSkillSearcher(registry);
       const result = searcher(queryString);
 
-      expect(result.query.originalQuery).toBe(queryString);
+      expect(result.query.originalQuery).toEqual([queryString]);
     });
   });
 

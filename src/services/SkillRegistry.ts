@@ -18,6 +18,7 @@ import {
   findSkillPaths,
   listSkillFiles,
   readSkillFile,
+  detectMimeType,
 } from './SkillFs';
 
 // Validation Schema
@@ -186,11 +187,14 @@ async function parseSkill(skillPath: DiscoveredSkillPath, content?: string): Pro
 }
 
 export function createSkillResourceMap(skillPath: string, filePaths: string[]): SkillResourceMap {
-  const output: SkillResourceMap = {};
+  const output: SkillResourceMap = new Map();
 
   for (const filePath of filePaths) {
     const relativePath = relative(skillPath, filePath);
-    output[relativePath] = filePath;
+    output.set(relativePath, {
+      absolutePath: filePath,
+      mimeType: detectMimeType(filePath),
+    });
   }
 
   return output;

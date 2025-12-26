@@ -7,7 +7,7 @@
  * Key: relative path
  * Value: object with mimetype
  */
-export type SkillResourceMap = Record<string, string>;
+export type SkillResourceMap = Map<string, { absolutePath: string; mimeType: string }>;
 
 /**
  * Skill definition parsed from SKILL.md
@@ -41,7 +41,7 @@ export type TextSegment = {
 export type ParsedSkillQuery = {
   include: string[]; // Positive search terms
   exclude: string[]; // Negative search terms (-term)
-  originalQuery: string; // Original query string
+  originalQuery: string[]; // Original query string
   hasExclusions: boolean; // Flag for user feedback
   termCount: number; // Total number of terms
 };

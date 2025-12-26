@@ -8,7 +8,7 @@ describe('parseQuery', () => {
     const result = parseQuery('');
     expect(result.include).toHaveLength(0);
     expect(result.exclude).toHaveLength(0);
-    expect(result.originalQuery).toBe('');
+    expect(result.originalQuery).toEqual([]);
     expect(result.hasExclusions).toBe(false);
     expect(result.termCount).toBe(0);
   });
@@ -17,7 +17,7 @@ describe('parseQuery', () => {
     const result = parseQuery('api');
     expect(result.include).toContain('api');
     expect(result.exclude).toHaveLength(0);
-    expect(result.originalQuery).toBe('api');
+    expect(result.originalQuery).toEqual(['api']);
     expect(result.hasExclusions).toBe(false);
     expect(result.termCount).toBe(1);
   });
@@ -64,13 +64,13 @@ describe('parseQuery', () => {
   test('should handle quoted phrases', () => {
     const result = parseQuery('"git commit" message');
     expect(result.include.length).toBeGreaterThan(0);
-    expect(result.originalQuery).toBe('"git commit" message');
+    expect(result.originalQuery).toEqual(['"git commit" message']);
   });
 
   test('should preserve original query string', () => {
     const queryString = 'Git Workflow -Deprecated';
     const result = parseQuery(queryString);
-    expect(result.originalQuery).toBe(queryString);
+    expect(result.originalQuery).toEqual([queryString]);
   });
 
   test('should track term count including negations', () => {
@@ -479,7 +479,7 @@ describe('SkillSearcher - Edge Cases', () => {
     test('should handle quoted phrases in parseQuery', () => {
       const result = parseQuery('"git commit" workflow');
       expect(result.include.length).toBeGreaterThan(0);
-      expect(result.originalQuery).toBe('"git commit" workflow');
+      expect(result.originalQuery).toEqual(['"git commit" workflow']);
     });
 
     test('should parse single quoted term', () => {

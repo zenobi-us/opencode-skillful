@@ -9,9 +9,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);
@@ -22,9 +22,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);
@@ -37,9 +37,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);
@@ -59,9 +59,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);
@@ -83,9 +83,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);
@@ -108,9 +108,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);
@@ -130,9 +130,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);
@@ -152,9 +152,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);
@@ -173,9 +173,9 @@ describe('ScriptResourceExecutor', () => {
       const mockProvider: SkillProvider = createMockProvider([
         createMockSkill({
           name: 'test_skill',
-          scripts: {
-            'script.sh': { mimetype: 'application/x-sh' },
-          },
+          scripts: new Map([
+            ['script.sh', { absolutePath: '/path/to/script.sh', mimeType: 'application/x-sh' }],
+          ]),
         }),
       ]);
       const executor = createScriptResourceExecutor(mockProvider);

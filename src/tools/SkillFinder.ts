@@ -17,18 +17,13 @@ import type { SkillProvider } from '../types';
  */
 export function createFindSkillsTool(_ctx: PluginInput, provider: SkillProvider): ToolDefinition {
   return tool({
-    description: `
-Search for skills using natural query syntax. 
-
-Supports query features: 
-- path prefixes (e.g., 'experts', 'superpowers/writing'), 
-- modifiers: (-term) or (+term),
-- quoted phrases,
-- and free text. 
-
-Use '*' to list all skills.`,
+    description: `Search for skills using natural query syntax`,
     args: {
-      query: tool.schema.string(),
+      query: tool.schema
+        .union([tool.schema.string(), tool.schema.array(tool.schema.string())])
+        .describe(
+          `The search query. Supports natural syntax, negation (-term), quoted phrases ("exact match"), and path prefixes (e.g., "experts/"). Use "*" or leave empty to list all skills.`
+        ),
     },
     execute: async (args) => {
       const result = provider.searcher(args.query);
@@ -36,7 +31,7 @@ Use '*' to list all skills.`,
       const results = result.matches
         .map(
           (skill) =>
-            `<Skill id="${skill.toolName}" shortname="${skill.name}" > ${skill.description} </Skill>`
+            `<Skill skill_name="${skill.toolName}" skill_shortname="${skill.name}">${skill.description}</Skill>`
         )
         .join('\n');
 
@@ -54,12 +49,15 @@ Use '*' to list all skills.`,
         : '';
 
       return `<SkillSearchResults query="${args.query}">
-${results}
-<Summary>
-  <Total>${provider.registry.skills.length}</Total>
-  <Matches>${result.totalMatches}</Matches>
-  <Feedback>${result.feedback}</Feedback>${debugInfo}
-</Summary>
+  <Skills>
+    ${results}
+  </Skills>
+  <Summary>
+    <Total>${provider.registry.skills.length}</Total>
+    <Matches>${result.totalMatches}</Matches>
+    <Feedback>${result.feedback}</Feedback>
+    ${debugInfo}
+  </Summary>
 </SkillSearchResults>`;
     },
   });

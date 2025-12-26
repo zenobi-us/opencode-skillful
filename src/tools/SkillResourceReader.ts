@@ -15,11 +15,12 @@ export function createToolResourceReader(
   const skillResourceResolver = createSkillResourceResolver(provider);
 
   return tool({
-    description:
-      "Read [[<relative_path>]] from a skill's resources and inject content silently. If loading skills, use the skills_<skillname> instead.",
+    description: `Read a resource file from a skill.`,
     args: {
-      skill_name: tool.schema.string(),
-      relative_path: tool.schema.string(),
+      skill_name: tool.schema.string().describe('The skill id to read the resource from.'),
+      relative_path: tool.schema
+        .string()
+        .describe('The relative path to the resource file within the skill directory.'),
     },
     execute: async (args, toolCtx: ToolContext) => {
       const resource = await skillResourceResolver({
@@ -32,13 +33,13 @@ export function createToolResourceReader(
       await sendPrompt(
         `
 ---
-skill: ${args.skill_name}
+    skill: ${args.skill_name}
 resource: ${args.relative_path}
 mimeType: ${resource.mimeType}
 ---
 
-${resource.content}
-`,
+    ${resource.content}
+    `,
         { sessionId: toolCtx.sessionID }
       );
 
@@ -48,7 +49,7 @@ Load Skill Resource
   skill: ${args.skill_name}
   resource: ${args.relative_path}
   type: ${resource.mimeType}
-`;
+    `;
     },
   });
 }

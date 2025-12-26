@@ -22,9 +22,9 @@ export function createMockSkill(overrides: Partial<Skill> = {}): Skill {
     toolName: 'test_skill',
     path: '/path/to/skill/SKILL.md',
     content: 'Test content',
-    scripts: {},
-    references: {},
-    assets: {},
+    scripts: new Map(),
+    references: new Map(),
+    assets: new Map(),
     ...overrides,
   };
 }
@@ -71,7 +71,7 @@ export function mockSearchResult(overrides: Partial<SkillSearchResult> = {}): Sk
       exclude: [],
       hasExclusions: false,
       include: [],
-      originalQuery: '',
+      originalQuery: [],
       termCount: 0,
     },
     ...overrides,

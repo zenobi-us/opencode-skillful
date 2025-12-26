@@ -2,10 +2,6 @@ import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@
 import type { Skill, SkillProvider, SkillRegistryController } from '../types';
 import { createInstructionInjector } from '../services/OpenCodeChat';
 
-const unorderedList = <T extends { path: string }>(items: T[], labelFn: (item: T) => string) => {
-  return items.map((item) => `- ${labelFn(item)} `).join('\n');
-};
-
 /**
  * Tool to use (load) one or more skills
  */
@@ -33,24 +29,31 @@ export function createUseSkillsTool(ctx: PluginInput, provider: SkillProvider): 
 }
 
 function createSkillLoader(registry: SkillRegistryController) {
+  function renderResources(skill: Skill) {
+    const resources = [
+      ...Array.from(skill.references || []),
+      ...Array.from(skill.assets || []),
+      ...Array.from(skill.scripts || []),
+    ]
+      .map(
+        ([relativePath, resourceData]) =>
+          `<SkillResource relative-path="${relativePath}" absolute-path="${resourceData.absolutePath}" mime-type="${resourceData.mimeType}"/>`
+      )
+      .join('\n');
+    return resources;
+  }
   /**
    * Load a single skill into the chat
    */
   function render(skill: Skill) {
-    const skillScripts = unorderedList(skill.scripts, (script) => `${script.path}`);
-    const skillReferences = unorderedList(
-      skill.references,
-      (reference) => `[${reference.mimetype}] ${reference.path} `
-    );
-
+    const resources = renderResources(skill);
     const content = `
-# ${skill.name}
-
-${skill.description}
-
-${!skillReferences ? '' : `## References\n\n${skillReferences}\n\n`}
-${!skillScripts ? '' : `## Scripts\n\n${skillScripts}\n\n`}
-${skill.content}
+<Skill>
+  <SkillName>${skill.name}</SkillName>
+  <SkillDescription>${skill.description}</SkillDescription>
+  ${resources && `<SkillResources>${resources}</SkillResources>`}
+  <SkillContent>${skill.content}</SkillContent>
+</Skill>
 `;
     return content;
   }

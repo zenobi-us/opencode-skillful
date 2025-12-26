@@ -13,10 +13,16 @@ import { normalizePathQuery, stripSkillsPrefix } from './identifiers';
 /**
  * Parse a user query into structured search terms
  */
-export function parseQuery(queryString: string): ParsedSkillQuery {
-  const searchStringInstance = SearchString.parse(queryString);
+export function parseQuery(queryString: string | string[]): ParsedSkillQuery {
+  const queries = Array.isArray(queryString) ? queryString : [queryString];
 
-  const textSegments = searchStringInstance.getTextSegments() as TextSegment[];
+  const textSegments = queries
+    .map((query) => {
+      const instance = SearchString.parse(query);
+      return instance.getTextSegments();
+    })
+    .flat();
+
   const include = textSegments
     .filter((s: TextSegment) => !s.negated)
     .map((s: TextSegment) => s.text.toLowerCase())
@@ -30,7 +36,7 @@ export function parseQuery(queryString: string): ParsedSkillQuery {
   return {
     include,
     exclude,
-    originalQuery: queryString,
+    originalQuery: queries.filter((q) => q.trim().length > 0),
     hasExclusions: exclude.length > 0,
     termCount: textSegments.length,
   };
@@ -113,7 +119,7 @@ export function generateFeedback(query: ParsedSkillQuery, matchCount: number): s
  */
 
 export function createSkillSearcher(registry: SkillRegistryController): SkillSearcher {
-  function resolveQuery(queryString: string): SkillSearchResult {
+  function resolveQuery(queryString: string | string[]): SkillSearchResult {
     const query = parseQuery(queryString);
     const skills = registry.skills;
     const output: SkillSearchResult = {
@@ -132,28 +138,13 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
       return output;
     }
 
-    // Try path prefix matching first
-    const normalizedQuery = normalizePathQuery(queryString).toLowerCase();
-    const prefixMatches = skills.filter((skill) => {
-      const shortName = stripSkillsPrefix(skill.toolName).toLowerCase();
-      return shortName.startsWith(normalizedQuery);
-    });
-
-    if (prefixMatches.length > 0) {
-      output.matches = prefixMatches;
-      output.totalMatches = prefixMatches.length;
-      output.feedback = `✅ Found ${prefixMatches.length} matches for prefix "${queryString}"`;
-
-      return output;
-    }
-
     if (query.include.length === 0) {
       output.feedback = `❌ No valid search terms provided in query "${queryString}"`;
       return output;
     }
 
     let results = skills.filter((skill) => {
-      const haystack = `${skill.name} ${skill.description}`.toLowerCase();
+      const haystack = `${skill.toolName} ${skill.name} ${skill.description}`.toLowerCase();
       return query.include.every((term) => haystack.includes(term));
     });
 

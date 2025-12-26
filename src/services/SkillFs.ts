@@ -36,6 +36,51 @@ export const doesPathExist = (path: string): boolean => {
   return existsSync(path);
 };
 
+/**
+ * Detect MIME type from file extension
+ * Used for skill resources to identify content type
+ *
+ * @param filePath - Path to the file
+ * @returns MIME type string
+ */
+export const detectMimeType = (filePath: string): string => {
+  const ext = filePath.toLowerCase().split('.').pop() || '';
+
+  const mimeTypes: Record<string, string> = {
+    // Scripts
+    sh: 'application/x-sh',
+    bash: 'application/x-sh',
+    zsh: 'application/x-sh',
+    py: 'text/x-python',
+    js: 'application/javascript',
+    ts: 'application/typescript',
+    node: 'application/javascript',
+    // Documents
+    md: 'text/markdown',
+    txt: 'text/plain',
+    pdf: 'application/pdf',
+    // Images
+    svg: 'image/svg+xml',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    // Data
+    json: 'application/json',
+    yaml: 'application/yaml',
+    yml: 'application/yaml',
+    xml: 'application/xml',
+    csv: 'text/csv',
+    // Code
+    html: 'text/html',
+    css: 'text/css',
+    // Default
+  };
+
+  return mimeTypes[ext] || 'application/octet-stream';
+};
+
 export function createDiscoveredSkillPath(
   basePath: string,
   relativeSkillPath: string

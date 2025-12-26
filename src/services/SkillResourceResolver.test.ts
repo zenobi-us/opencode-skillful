@@ -60,6 +60,7 @@ describe('SkillResourceResolver', () => {
         relative_path: 'assets/logo.svg',
       });
       expect(resource.content).toBe('<svg></svg>');
+      expect(resource.mimeType).toBe('image/svg+xml');
     });
 
     test('should handle skill not found error', async () => {
