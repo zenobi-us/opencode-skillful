@@ -2,7 +2,7 @@
 
 An interpretation of the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills) for OpenCode, providing lazy-loaded skill discovery and injection.
 
-Differenator is :
+Differentiators include:
 
 - Conversationally the agent uses `skill_find words, words words` to discover skills
 - The agent uses `skill_use fully_resolved_skill_name` and,
@@ -68,20 +68,19 @@ skill_find "testing -performance"
 
 ## Features
 
-- :mag: Discover SKILL.md files from multiple locations
-- :zap: Lazy loading - skills only inject when explicitly requested
-- :file_folder: Path prefix matching for organized skill browsing
-- :abc: Natural query syntax with negation and quoted phrases
-- :label: Skill ranking by relevance (name matches weighted higher)
-- :recycle: Silent message insertion (noReply pattern)
+- Discover SKILL.md files from multiple locations
+- Lazy loading - skills only inject when explicitly requested
+- Path prefix matching for organized skill browsing
+- Natural query syntax with negation and quoted phrases
+- Skill ranking by relevance (name matches weighted higher)
+- Silent message insertion (noReply pattern)
 
 ## Skill Discovery Paths
 
 Skills are discovered from these locations (in priority order, last wins on duplicates):
 
-1. `~/.opencode/skills/` - User global skills (lowest priority)
-2. `~/.config/opencode/skills/` - Standard XDG config location
-3. `.opencode/skills/` - Project-local skills (highest priority)
+1. `~/.config/opencode/skills/` - Standard XDG config location or (`%APPDATA%/.opencode/skills` for windows users)
+2. `.opencode/skills/` - Project-local skills (highest priority)
 
 ## Usage in OpenCode
 
@@ -94,44 +93,71 @@ skill_find query="*"
 # Search by keyword
 skill_find query="git commit"
 
-# Path prefix matching
-skill_find query="experts/data-ai"
-
 # Exclude terms
 skill_find query="testing -performance"
 ```
 
 ### Loading Skills
 
+Skills must be loaded by their fully-qualified identifier (generated from the directory path).
+
+The skill identifier is created by converting the directory path to a slug: directory separators and hyphens become underscores.
+
 ```
-# Load a single skill
-skill_use skill_names=["writing-git-commits"]
+skills/
+  experts/
+    ai/
+      agentic-engineer/        # Identifier: experts_ai_agentic_engineer
+  superpowers/
+    writing/
+      code-review/             # Identifier: superpowers_writing_code_review
+```
+
+When loading skills, use the full identifier:
+
+```
+# Load a skill by its identifier
+skill_use skill_names=["experts_ai_agentic_engineer"]
 
 # Load multiple skills
-skill_use skill_names=["writing-git-commits", "code-review"]
-
-# Load by fully-qualified name
-skill_use skill_names=["experts/writing-git-commits"]
+skill_use skill_names=["experts_ai_agentic_engineer", "superpowers_writing_code_review"]
 ```
 
 ### Reading Skill Resources
 
 ```
+
 # Read a reference document
+
 skill_resource skill_name="writing-git-commits" relative_path="references/style-guide.md"
 
 # Read a template
+
 skill_resource skill_name="brand-guidelines" relative_path="assets/logo-usage.html"
+
 ```
+
+Normally you won't need to use `skill_resource` directly, since the llm will do it for you.
+
+When skill_use is called, it will be wrapped with instructions to the llm on
+how to load references, assets, and scripts from the skill.
+
+But when writing your skills, there's nothing stopping you from using `skill_resource` to be explicit.
+
+(Just be aware that exotic file types might need special tooling to handle them properly.)
 
 ### Executing Skill Scripts
 
 ```
+
 # Execute a script without arguments
+
 skill_exec skill_name="build-utils" relative_path="scripts/generate-changelog.sh"
 
 # Execute a script with arguments
+
 skill_exec skill_name="code-generator" relative_path="scripts/gen.py" args=["--format", "json", "--output", "schema.json"]
+
 ```
 
 ## Plugin Tools
@@ -154,17 +180,18 @@ Search for skills using natural query syntax with intelligent ranking by relevan
 **Returns:**
 
 - List of matching skills with:
-  - `skill_name`: Fully-qualified tool name (FQDN)
-  - `skill_shortname`: Short skill identifier
+  - `skill_name`: Skill identifier (e.g., `experts_writing_git_commits`)
+  - `skill_shortname`: Directory name of the skill (e.g., `writing-git-commits`)
   - `description`: Human-readable description
-- Debug information (when enabled): discovered count, parsed results, rejections, duplicates, errors
+- If config.debug is enabled:
+  - Debug information: discovered count, parsed results, rejections, duplicates, errors
 
 **Example Response:**
 
 ```xml
 <SkillSearchResults query="git commit">
   <Skills>
-    <Skill skill_name="experts/writing-git-commits" skill_shortname="writing-git-commits">
+    <Skill skill_name="experts_writing_git_commits" skill_shortname="writing-git-commits">
       Guidelines for writing effective git commit messages
     </Skill>
   </Skills>
@@ -182,7 +209,7 @@ Load one or more skills into the chat context with full resource metadata.
 
 **Parameters:**
 
-- `skill_names`: Array of skill names to load (by toolName/FQDN or short name)
+- `skill_names`: Array of skill identifiers to load (e.g., `experts_ai_agentic_engineer`)
 
 **Features:**
 
@@ -207,6 +234,13 @@ Load one or more skills into the chat context with full resource metadata.
 
 Read a specific resource file from a skill's directory and inject silently into the chat.
 
+**When to Use:**
+
+- Load specific reference documents or templates from a skill
+- Access supporting files without loading the entire skill
+- Retrieve examples, guides, or configuration templates
+- Most commonly used after loading a skill with `skill_use` to access its resources
+
 **Parameters:**
 
 - `skill_name`: The skill containing the resource (by toolName/FQDN or short name)
@@ -220,7 +254,7 @@ Read a specific resource file from a skill's directory and inject silently into 
 **Behavior:**
 
 - Silently injects resource content without triggering AI response (noReply pattern)
-- Resolves relative paths within skill directory
+- Resolves relative paths within skill directory (e.g., `references/guide.md`, `assets/template.html`, `scripts/setup.sh`)
 - Supports any text or binary file type
 
 **Example Response:**
@@ -266,6 +300,80 @@ Exit Code: 0
 STDOUT: Changelog generated successfully
 STDERR: (none)
 ```
+
+## Error Handling
+
+### skill_find Errors
+
+When a search query doesn't match any skills, the response includes feedback:
+
+```xml
+<SkillSearchResults query="nonexistent">
+  <Skills></Skills>
+  <Summary>
+    <Total>42</Total>
+    <Matches>0</Matches>
+    <Feedback>No skills found matching your query</Feedback>
+  </Summary>
+</SkillSearchResults>
+```
+
+### skill_use Errors
+
+When loading skills, if a skill name is not found, it's returned in the `notFound` array:
+
+```json
+{ "loaded": ["writing-git-commits"], "notFound": ["nonexistent-skill"] }
+```
+
+The loaded skills are still injected into the conversation, allowing you to use available skills even if some are not found.
+
+### skill_resource Errors
+
+Resource loading failures occur when:
+
+- The skill doesn't exist
+- The resource path doesn't exist within the skill
+- The file cannot be read due to permissions
+
+The tool returns an error message indicating which skill or resource path was problematic.
+
+### skill_exec Errors
+
+Script execution includes exit codes and error output:
+
+```
+Executed script from skill "build-utils": scripts/generate-changelog.sh
+
+Exit Code: 1
+STDOUT: (partial output)
+STDERR: Permission denied: scripts/generate-changelog.sh
+```
+
+Non-zero exit codes indicate script failures. Always check STDERR and the exit code when troubleshooting.
+
+## Configuration
+
+The plugin reads configuration from the OpenCode config file (`~/.config/opencode/config.json`):
+
+```json
+{
+  "plugins": ["@zenobius/opencode-skillful"],
+  "skillful": {
+    "debug": false,
+    "basePaths": ["~/.config/opencode/skills", ".opencode/skills"]
+  }
+}
+```
+
+### Configuration Options
+
+- **debug** (boolean, default: `false`): Enable debug output showing skill discovery stats
+  - When enabled, `skill_find` includes discovered, parsed, rejected, and duplicate counts
+  - Useful for diagnosing skill loading issues
+- **basePaths** (array, default: standard locations): Custom skill search directories
+  - Paths are searched in order; later paths override earlier ones for duplicate skill names
+  - Use project-local `.opencode/skills/` for project-specific skills
 
 ## Architecture
 
@@ -337,12 +445,6 @@ my-skill/
 ---
 name: my-skill
 description: A brief description of what this skill does (min 20 chars)
-license: MIT
-allowed-tools:
-  - bash
-  - read
-metadata:
-  author: Your Name
 ---
 # My Skill
 
@@ -352,7 +454,11 @@ Instructions for the AI agent when this skill is loaded...
 **Requirements:**
 
 - `name` must match the directory name (lowercase, alphanumeric, hyphens only)
-- `description` must be at least 20 characters
+- `description` must be at least 20 characters and should be concise (under 500 characters recommended)
+  - Focus on when to use the skill, not what it does
+  - Include specific triggering conditions and symptoms
+  - Use third person for system prompt injection
+  - Example: "Use when designing REST APIs to establish consistent patterns and improve developer experience"
 - Directory name and frontmatter `name` must match exactly
 
 ### Resource Types
@@ -362,7 +468,7 @@ Skill resources are automatically discovered and categorized:
 - **References** (`references/` directory): Documentation, guides, and reference materials
   - Typically Markdown, plaintext, or HTML files
   - Accessed via `skill_resource` for reading documentation
-- **Assets** (`assets/` directory): Templates, templates, images, and binary files
+- **Assets** (`assets/` directory): Templates, images, and binary files
   - Can include HTML templates, images, configuration files
   - Useful for providing templates and examples to the AI
 - **Scripts** (`scripts/` directory): Executable scripts that perform actions
