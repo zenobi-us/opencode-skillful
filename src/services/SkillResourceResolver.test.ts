@@ -22,25 +22,35 @@ describe('SkillResourceResolver', () => {
   }
 
   describe('resolveSkillResource', () => {
+    /**
+     * Test: Successfully read reference type resources from memfs
+     *
+     * - Setup mock resolver with in-memory file system
+     * - Request a reference resource from a test skill
+     * - Verify the content matches expected data
+     *
+     * @note relative references to resource files must
+     * be relative to the SKILL.md location
+     */
     test('should successfully read reference type resources from memfs', async () => {
       const resolver = await createMockResolver();
       const resource = await resolver({
         skill_name: 'test_skill',
         type: 'reference',
-        relative_path: 'guide.md',
+        relative_path: 'references/guide.md',
       });
       expect(resource.content).toBe('# Guide\nThis is a guide.');
     });
-    //
-    // test('should successfully read script type resources from memfs', async () => {
-    //   const resolver = await createMockResolver();
-    //   const resource = await resolver({
-    //     skill_name: 'test_skill',
-    //     type: 'script',
-    //     relative_path: 'build.sh',
-    //   });
-    //   expect(resource.content).toBe('#!/bin/bash\necho "Building..."');
-    // });
+
+    test('should successfully read script type resources from memfs', async () => {
+      const resolver = await createMockResolver();
+      const resource = await resolver({
+        skill_name: 'test_skill',
+        type: 'script',
+        relative_path: 'scripts/build.sh',
+      });
+      expect(resource.content).toBe('#!/bin/bash\necho "Building..."');
+    });
     //
     // test('should successfully read asset type resources from memfs', async () => {
     //   const resolver = await createMockResolver();

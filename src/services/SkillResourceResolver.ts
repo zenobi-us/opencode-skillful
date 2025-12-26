@@ -39,6 +39,12 @@ export function createSkillResourceResolver(provider: SkillProvider) {
     }
 
     const resourceMap = resolveResourceMap(skill, args.type);
+    if (!resourceMap) {
+      throw new Error(
+        `Skill "${args.skill_name}" does not have any resources of type "${args.type}"`
+      );
+    }
+
     const resourcePath = resourceMap[args.relative_path];
 
     if (!resourcePath) {

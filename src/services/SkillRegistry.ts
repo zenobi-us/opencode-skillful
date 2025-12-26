@@ -79,7 +79,7 @@ export async function createSkillRegistry(
     matches.push(...found);
   }
   logger.debug(
-    'discovered',
+    '[SkillRegistryController] skills.discovered',
     matches.map((m) => m.absolutePath)
   );
 
@@ -90,7 +90,9 @@ export async function createSkillRegistry(
   for await (const match of matches) {
     try {
       const content = await readSkillFile(match.absolutePath);
+      logger.debug('[SkillRegistryController] readSkill', match.absolutePath);
       const skill = await parseSkill(match, content);
+      logger.debug('[SkillRegistryController] parseSkill', match.absolutePath, skill);
 
       if (!skill) {
         debug.rejected++;
@@ -108,9 +110,16 @@ export async function createSkillRegistry(
       debug.parsed++;
     } catch (error) {
       debug.rejected++;
-      debug.errors.push(`[ERROR] ${(error as Error).message}`);
+      debug.errors.push(
+        error instanceof Error
+          ? error.message
+          : `[UNKNOWNERROR] Unknown error at ${match.absolutePath}`
+      );
+      continue;
     }
   }
+
+  logger.debug('errors', JSON.stringify(debug.errors, null, 2));
 
   return { controller, debug };
 }
@@ -136,15 +145,12 @@ async function parseSkill(skillPath: DiscoveredSkillPath, content?: string): Pro
   // Validate frontmatter schema
   const frontmatter = SkillFrontmatterSchema.safeParse(parsed.data);
   if (!frontmatter.success) {
-    const error = [
-      `❌ Invalid frontmatter in ${skillPath.absolutePath}:`,
-
-      ...frontmatter.error.flatten().formErrors.map((err) => {
-        return `   - ${err}`;
-      }),
-    ].join('\n');
-
-    throw new Error(error);
+    throw new Error(
+      `[FrontMatterInvalid] ${skillPath.absolutePath} [${JSON.stringify(frontmatter.error.issues)}]`,
+      {
+        cause: frontmatter.error,
+      }
+    );
   }
 
   // Use directory name as skill name (shortName)
@@ -153,12 +159,9 @@ async function parseSkill(skillPath: DiscoveredSkillPath, content?: string): Pro
   // Generate tool name from path
   const skillFullPath = dirname(skillPath.absolutePath);
 
-  // Scan for scripts and resources
-  const [scriptPaths, referencePaths, assetPaths] = await Promise.all([
-    listSkillFiles(skillFullPath, 'scripts'),
-    listSkillFiles(skillFullPath, 'references'),
-    listSkillFiles(skillFullPath, 'assets'),
-  ]);
+  const scriptPaths = listSkillFiles(skillFullPath, 'scripts');
+  const referencePaths = listSkillFiles(skillFullPath, 'references');
+  const assetPaths = listSkillFiles(skillFullPath, 'assets');
 
   return {
     allowedTools: frontmatter.data['allowed-tools'],

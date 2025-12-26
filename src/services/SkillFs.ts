@@ -1,5 +1,4 @@
-import { lstat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 export const readSkillFile = async (path: string): Promise<string> => {
   const file = Bun.file(path);
@@ -14,28 +13,15 @@ export const readSkillFile = async (path: string): Promise<string> => {
  * @param subdirectory - Subdirectory to scan (e.g., 'scripts', 'resources')
  * @returns Array of absolute file paths
  */
-export const listSkillFiles = async (
-  skillPath: string,
-  subdirectory: string
-): Promise<string[]> => {
-  const targetPath = join(skillPath, subdirectory);
-
-  const stat = await lstat(targetPath).catch(() => null);
-  if (!stat?.isDirectory()) {
+export const listSkillFiles = (skillPath: string, subdirectory: string): string[] => {
+  const targetPath = resolve(skillPath, subdirectory);
+  if (!targetPath.startsWith(skillPath)) {
+    // Prevent directory traversal attacks
     return [];
   }
 
   const glob = new Bun.Glob('**/*');
-  const results: string[] = [];
-
-  for await (const match of glob.scan({ cwd: targetPath, absolute: true })) {
-    const fileStat = await lstat(match).catch(() => null);
-    if (fileStat?.isFile()) {
-      results.push(match);
-    }
-  }
-
-  return results;
+  return Array.from(glob.scanSync({ cwd: targetPath, absolute: true }));
 };
 
 export const findSkillPaths = async (basePath: string): Promise<DiscoveredSkillPath[]> => {
