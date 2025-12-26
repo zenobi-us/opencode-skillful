@@ -33,7 +33,7 @@ export const findSkillPaths = async (basePath: string): Promise<DiscoveredSkillP
 };
 
 // purely so we can mock it in tests
-export const doesPathExist = async (path: string): boolean => {
+export const doesPathExist = (path: string): boolean => {
   return existsSync(path);
 };
 

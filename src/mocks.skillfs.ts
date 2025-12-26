@@ -27,6 +27,10 @@ This is a test skill.
 
   return {
     // Override file system calls to use memfs
+    doesPathExist: (path: string): boolean => {
+      console.log(`[MOCK] skillfs.doesPathExist`, path);
+      return memdisk.existsSync(path);
+    },
 
     /**
      * Find skill paths by searching for SKILL.md files
