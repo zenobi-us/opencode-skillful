@@ -1,4 +1,5 @@
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 
 export const readSkillFile = async (path: string): Promise<string> => {
@@ -15,11 +16,6 @@ export const readSkillFile = async (path: string): Promise<string> => {
  * @returns Array of absolute file paths
  */
 export const listSkillFiles = (skillPath: string, subdirectory: string): string[] => {
-  // Prevent directory traversal attacks
-  if (!resolve(skillPath, subdirectory).startsWith(skillPath)) {
-    return [];
-  }
-
   // using cwd in the skillPath, because we should have already
   // confirmed it exists.
   const glob = new Bun.Glob(join(subdirectory, '**', '*'));
@@ -27,16 +23,6 @@ export const listSkillFiles = (skillPath: string, subdirectory: string): string[
 };
 
 export const findSkillPaths = async (basePath: string): Promise<DiscoveredSkillPath[]> => {
-  // if basePath does not exist, return empty array
-  try {
-    const stats = await stat(basePath);
-    if (!stats.isDirectory()) {
-      return [];
-    }
-  } catch {
-    return [];
-  }
-
   const results: DiscoveredSkillPath[] = [];
   const glob = new Bun.Glob('**/SKILL.md');
   for await (const match of glob.scan({ cwd: basePath })) {
@@ -44,6 +30,11 @@ export const findSkillPaths = async (basePath: string): Promise<DiscoveredSkillP
   }
 
   return results;
+};
+
+// purely so we can mock it in tests
+export const doesPathExist = async (path: string): boolean => {
+  return existsSync(path);
 };
 
 export function createDiscoveredSkillPath(

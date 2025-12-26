@@ -12,7 +12,13 @@ import {
 import { dirname, basename, sep, relative } from 'node:path';
 import matter from 'gray-matter';
 import { toolName } from './identifiers';
-import { DiscoveredSkillPath, findSkillPaths, listSkillFiles, readSkillFile } from './SkillFs';
+import {
+  DiscoveredSkillPath,
+  doesPathExist,
+  findSkillPaths,
+  listSkillFiles,
+  readSkillFile,
+} from './SkillFs';
 
 // Validation Schema
 const SkillFrontmatterSchema = tool.schema.object({
@@ -72,7 +78,7 @@ export async function createSkillRegistry(
   };
 
   // Find all SKILL.md files recursively
-  const basePaths = Array.isArray(config.basePaths) ? config.basePaths : [config.basePaths];
+  const basePaths = config.basePaths.filter(doesPathExist);
   const matches: DiscoveredSkillPath[] = [];
   for (const basePath of basePaths) {
     const found = await findSkillPaths(basePath);

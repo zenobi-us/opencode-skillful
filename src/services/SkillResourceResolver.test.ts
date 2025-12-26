@@ -10,7 +10,7 @@ import { createSkillRegistry } from './SkillRegistry';
 
 describe('SkillResourceResolver', () => {
   async function createMockResolver() {
-    const config = { basePaths: ['/skills'], debug: false };
+    const config = { basePaths: ['/skills', '/place/that/doesnt/exist'], debug: false };
     const controller = await createSkillRegistry(config, console);
     const provider = createSkillProvider({
       controller: controller.controller,

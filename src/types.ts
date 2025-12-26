@@ -72,7 +72,7 @@ export type SkillRank = {
  */
 export type PluginConfig = {
   debug: boolean;
-  basePaths: string | string[];
+  basePaths: string[];
 };
 
 export type LogType = 'log' | 'debug' | 'error' | 'warn';
