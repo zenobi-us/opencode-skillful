@@ -1,6 +1,5 @@
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
 
 export const readSkillFile = async (path: string): Promise<string> => {
   const file = Bun.file(path);

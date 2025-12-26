@@ -9,7 +9,7 @@ import {
   SkillResourceMap,
 } from '../types';
 
-import { dirname, basename, sep, relative } from 'node:path';
+import { dirname, basename, relative } from 'node:path';
 import matter from 'gray-matter';
 import { toolName } from './identifiers';
 import {
