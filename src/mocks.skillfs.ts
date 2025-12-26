@@ -29,6 +29,7 @@ mock.module('./services/SkillFs.ts', async () => {
       for (const relativePath of globResult) {
         results.push(createDiscoveredSkillPath(basePath, relativePath));
       }
+      console.log(`[MOCK] skillfs.findSkillPaths results:`, results);
       return results;
     },
     // Override other FS-dependent functions as needed
@@ -49,4 +50,4 @@ mock.module('./services/SkillFs.ts', async () => {
   };
 });
 
-console.log('[MOCK] skillfs');
+console.log('[MOCK] skillfs.mock.ready');
