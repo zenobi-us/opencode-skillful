@@ -1,0 +1,42 @@
+amends "package://github.com/jdx/hk/releases/download/v1.26.0/hk@1.26.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.26.0/hk@1.26.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+    // eslint for TypeScript files
+    ["eslint"] {
+        glob = "**/*.ts"
+        check = "eslint {{files}}"
+        fix = "eslint --fix {{files}}"
+    }
+
+    // uses builtin prettier linter config
+    ["prettier"] = Builtins.prettier
+
+    // define a custom linter
+    ["pkl"] {
+        glob = "*.pkl"
+        check = "pkl eval {{files}} >/dev/null"
+    }
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true    // automatically modify files with available linter fixes
+        stash = "git" // stashes unstaged changes while running fix steps
+        steps {
+            ...linters // add all linters defined above
+        }
+    }
+    // instead of pre-commit, you can instead define pre-push hooks
+    ["pre-push"] {
+        steps = linters
+    }
+    // "fix" and "check" are special steps for `hk fix` and `hk check` commands
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}

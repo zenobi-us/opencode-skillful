@@ -5,6 +5,7 @@ echo ""
 echo "🍜 Setting up project"
 echo ""
 
+hk install
 bun install
 
 echo ""
