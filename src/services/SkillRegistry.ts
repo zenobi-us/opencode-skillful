@@ -9,7 +9,7 @@ import {
   SkillResourceMap,
 } from '../types';
 
-import { dirname, basename, sep } from 'node:path';
+import { dirname, basename, sep, relative } from 'node:path';
 import matter from 'gray-matter';
 import { toolName } from './identifiers';
 import { DiscoveredSkillPath, findSkillPaths, listSkillFiles, readSkillFile } from './SkillFs';
@@ -74,7 +74,7 @@ export async function createSkillRegistry(
   // Find all SKILL.md files recursively
   const basePaths = Array.isArray(config.basePaths) ? config.basePaths : [config.basePaths];
   const matches: DiscoveredSkillPath[] = [];
-  for await (const basePath of basePaths) {
+  for (const basePath of basePaths) {
     const found = await findSkillPaths(basePath);
     matches.push(...found);
   }
@@ -129,7 +129,7 @@ export async function createSkillRegistry(
  * Returns null if parsing fails (with error logging)
  */
 async function parseSkill(skillPath: DiscoveredSkillPath, content?: string): Promise<Skill | null> {
-  const relativePath = skillPath.absolutePath.replace(skillPath.basePath + sep, '');
+  const relativePath = relative(skillPath.basePath, skillPath.absolutePath);
 
   if (!relativePath) {
     throw new Error(`❌ Skill path does not match expected pattern: ${skillPath.absolutePath}`);
@@ -183,7 +183,7 @@ export function createSkillResourceMap(skillPath: string, filePaths: string[]): 
   const output: SkillResourceMap = {};
 
   for (const filePath of filePaths) {
-    const relativePath = filePath.replace(skillPath + sep, '');
+    const relativePath = relative(skillPath, filePath);
     output[relativePath] = filePath;
   }
 

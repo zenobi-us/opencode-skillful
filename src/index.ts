@@ -46,7 +46,6 @@ async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
   const base = {
     debug: false,
     basePaths: [
-      join(os.homedir(), '.opencode', 'skills'), // Lowest priority: Non standard user config
       join(OpenCodePaths.config, 'skills'), // Lowest priority: Standard User Config (windows)
       join(ctx.directory, '.opencode', 'skills'), // Highest priority: Project-local
     ],
@@ -58,10 +57,7 @@ async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
 export const SkillsPlugin: Plugin = async (ctx) => {
   const config = await getPluginConfig(ctx);
   const logger = createLogger(config);
-  const registry = await createSkillRegistry(config, logger, async (path) => {
-    const data = await Bun.file(path).text();
-    return data.toString();
-  });
+  const registry = await createSkillRegistry(config, logger);
 
   const provider = createSkillProvider({
     config,
