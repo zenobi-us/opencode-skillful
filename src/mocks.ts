@@ -1,4 +1,3 @@
-import { vi } from 'vitest';
 import type {
   Skill,
   SkillProvider,

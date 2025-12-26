@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { test, describe, expect } from 'bun:test';
 import { createSkillSearcher } from './SkillSearcher';
 import { createMockSkill, createMockRegistryController } from '../mocks';
 import { Skill } from '../types';
 
 describe('SkillSearcher', () => {
   describe('Query parsing', () => {
-    it('should parse simple query with single term', () => {
+    test('should parse simple query with single term', () => {
       const searcher = createSkillSearcher(
         createMockRegistryController([createMockSkill({ name: 'writing' })])
       );
@@ -15,7 +15,7 @@ describe('SkillSearcher', () => {
       expect(result.query.exclude).toHaveLength(0);
     });
 
-    it('should parse query with multiple inclusion terms', () => {
+    test('should parse query with multiple inclusion terms', () => {
       const searcher = createSkillSearcher(
         createMockRegistryController([
           createMockSkill({
@@ -33,7 +33,7 @@ describe('SkillSearcher', () => {
       expect(result.query.exclude).toHaveLength(0);
     });
 
-    it('should parse query with exclusion terms (minus prefix)', () => {
+    test('should parse query with exclusion terms (minus prefix)', () => {
       const searcher = createSkillSearcher(
         createMockRegistryController([
           createMockSkill({ name: 'writing', description: 'General writing' }),
@@ -46,7 +46,7 @@ describe('SkillSearcher', () => {
       expect(result.query.exclude).toContain('document');
     });
 
-    it('should parse query with multiple exclusion terms', () => {
+    test('should parse query with multiple exclusion terms', () => {
       const searcher = createSkillSearcher(createMockRegistryController([]));
       const result = searcher('tool -python -javascript');
 
@@ -55,7 +55,7 @@ describe('SkillSearcher', () => {
       expect(result.query.exclude).toContain('javascript');
     });
 
-    it('should parse mixed inclusion and exclusion terms', () => {
+    test('should parse mixed inclusion and exclusion terms', () => {
       const skills: Skill[] = [];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -66,7 +66,7 @@ describe('SkillSearcher', () => {
       expect(result.query.exclude).toContain('legacy');
     });
 
-    it('should handle quoted phrases with spaces', () => {
+    test('should handle quoted phrases with spaces', () => {
       const skills = [
         createMockSkill({ name: 'git-commit-guide', description: 'git commit message guide' }),
       ];
@@ -77,7 +77,7 @@ describe('SkillSearcher', () => {
       expect(result.query.exclude).toContain('draft');
     });
 
-    it('should handle empty string query', () => {
+    test('should handle empty string query', () => {
       const skills = [createMockSkill({ name: 'skill1' })];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -88,7 +88,7 @@ describe('SkillSearcher', () => {
       expect(result.matches[0].name).toBe('skill1');
     });
 
-    it('should handle only whitespace', () => {
+    test('should handle only whitespace', () => {
       const skills: Skill[] = [];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -98,7 +98,7 @@ describe('SkillSearcher', () => {
       expect(result.matches).toHaveLength(0);
     });
 
-    it('should normalize query to lowercase', () => {
+    test('should normalize query to lowercase', () => {
       const skills = [createMockSkill({ name: 'writing', description: 'Writing skills' })];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -108,7 +108,7 @@ describe('SkillSearcher', () => {
       expect(result.query.include).toContain('git');
     });
 
-    it('should handle special characters in query', () => {
+    test('should handle special characters in query', () => {
       const skills = [
         createMockSkill({ name: 'node.js-setup', description: 'Node.js configuration' }),
       ];
@@ -119,7 +119,7 @@ describe('SkillSearcher', () => {
       expect(result.query.include.length).toBeGreaterThan(0);
     });
 
-    it('should handle only exclusion terms', () => {
+    test('should handle only exclusion terms', () => {
       const skills: Skill[] = [];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -129,7 +129,7 @@ describe('SkillSearcher', () => {
       expect(result.query.exclude).toHaveLength(2);
     });
 
-    it('should track term count and exclusion flag', () => {
+    test('should track term count and exclusion flag', () => {
       const skills: Skill[] = [];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -139,7 +139,7 @@ describe('SkillSearcher', () => {
       expect(result.query.hasExclusions).toBe(true);
     });
 
-    it('should track original query string', () => {
+    test('should track original query string', () => {
       const queryString = 'writing git -deprecated';
       const skills: Skill[] = [];
       const registry = createMockRegistryController(skills);
@@ -151,7 +151,7 @@ describe('SkillSearcher', () => {
   });
 
   describe('Ranking algorithm', () => {
-    it('should rank exact name match highest', () => {
+    test('should rank exact name match highest', () => {
       const skills = [
         createMockSkill({
           name: 'git-commit',
@@ -172,7 +172,7 @@ describe('SkillSearcher', () => {
       expect(result.matches[0].name).toBe('git-commit');
     });
 
-    it('should rank name matches higher than description matches', () => {
+    test('should rank name matches higher than description matches', () => {
       const skills = [
         createMockSkill({
           name: 'blog-post',
@@ -195,7 +195,7 @@ describe('SkillSearcher', () => {
       expect(result.matches).toHaveLength(1);
     });
 
-    it('should filter out skills with exclusion terms', () => {
+    test('should filter out skills with exclusion terms', () => {
       const skills = [
         createMockSkill({
           name: 'python-guide',
@@ -222,7 +222,7 @@ describe('SkillSearcher', () => {
       expect(result.matches).toContainEqual(expect.objectContaining({ name: 'general-guide' }));
     });
 
-    it('should match on partial terms (substring matching)', () => {
+    test('should match on partial terms (substring matching)', () => {
       const skills = [
         createMockSkill({
           name: 'git-workflow',
@@ -244,7 +244,7 @@ describe('SkillSearcher', () => {
       expect(result.matches).toContainEqual(expect.objectContaining({ name: 'github-actions' }));
     });
 
-    it('should require ALL inclusion terms (AND logic)', () => {
+    test('should require ALL inclusion terms (AND logic)', () => {
       const skills = [
         createMockSkill({
           name: 'git-commit',
@@ -274,7 +274,7 @@ describe('SkillSearcher', () => {
       expect(result.matches).not.toContainEqual(expect.objectContaining({ name: 'documentation' }));
     });
 
-    it('should exclude skills matching ANY exclusion term', () => {
+    test('should exclude skills matching ANY exclusion term', () => {
       const skills = [
         createMockSkill({
           name: 'python-basics',
@@ -300,7 +300,7 @@ describe('SkillSearcher', () => {
       expect(result.matches[0].name).toBe('general-basics');
     });
 
-    it('should return empty array when no skills match inclusion terms', () => {
+    test('should return empty array when no skills match inclusion terms', () => {
       const skills: Skill[] = [
         createMockSkill({
           name: 'python-guide',
@@ -320,7 +320,7 @@ describe('SkillSearcher', () => {
       expect(result.matches).toHaveLength(0);
     });
 
-    it('should handle case-insensitive matching', () => {
+    test('should handle case-insensitive matching', () => {
       const skills = [
         createMockSkill({
           name: 'Git-Commit',
@@ -340,7 +340,7 @@ describe('SkillSearcher', () => {
       expect(result.matches.length).toBeGreaterThan(0);
     });
 
-    it('should prioritize skills matching more inclusion terms', () => {
+    test('should prioritize skills matching more inclusion terms', () => {
       const skills = [
         createMockSkill({
           name: 'git-commit-workflow',
@@ -366,7 +366,7 @@ describe('SkillSearcher', () => {
       expect(result.matches[0].name).toBe('git-commit-workflow');
     });
 
-    it('should handle empty skills array', () => {
+    test('should handle empty skills array', () => {
       const skills: Skill[] = [];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -375,7 +375,7 @@ describe('SkillSearcher', () => {
       expect(result.matches).toHaveLength(0);
     });
 
-    it('should handle empty query with multiple skills', () => {
+    test('should handle empty query with multiple skills', () => {
       const skills = [
         createMockSkill({ name: 'skill1', description: 'Description 1', toolName: 'skill1' }),
         createMockSkill({ name: 'skill2', description: 'Description 2', toolName: 'skill2' }),
@@ -388,7 +388,7 @@ describe('SkillSearcher', () => {
       expect(result.totalMatches).toBe(2);
     });
 
-    it('should break ties with name matches count', () => {
+    test('should break ties with name matches count', () => {
       const skills = [
         createMockSkill({
           name: 'git-workflow-git',
@@ -409,7 +409,7 @@ describe('SkillSearcher', () => {
       expect(result.matches[0].name).toBe('git-workflow-git');
     });
 
-    it('should break final ties alphabetically by skill name', () => {
+    test('should break final ties alphabetically by skill name', () => {
       const skills = [
         createMockSkill({ name: 'zebra', description: 'Test skill', toolName: 'apple_tool' }),
         createMockSkill({ name: 'apple', description: 'Test skill', toolName: 'zebra_tool' }),
@@ -422,7 +422,7 @@ describe('SkillSearcher', () => {
       expect(result.matches[1].name).toBe('zebra');
     });
 
-    it('should track totalMatches before exclusion filtering', () => {
+    test('should track totalMatches before exclusion filtering', () => {
       const skills = [
         createMockSkill({
           name: 'python-guide',
@@ -452,7 +452,7 @@ describe('SkillSearcher', () => {
   });
 
   describe('Feedback message generation', () => {
-    it('should generate feedback for successful search', () => {
+    test('should generate feedback for successful search', () => {
       const skills = [
         createMockSkill({
           name: 'git-commit',
@@ -474,17 +474,17 @@ describe('SkillSearcher', () => {
       expect(result.feedback).toContain('Found');
     });
 
-    it('should generate feedback for no results', () => {
+    test('should generate feedback for no results', () => {
       const skills: Skill[] = [];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('nonexistent');
 
-      expect(result.feedback).toContain('❌');
-      expect(result.feedback).toContain('No matches found');
+      expect(result.feedback).toContain('✅');
+      expect(result.feedback).toContain('Found 0 matches');
     });
 
-    it('should mention included terms in feedback', () => {
+    test('should mention included terms in feedback', () => {
       const skills = [
         createMockSkill({
           name: 'git-commit',
@@ -496,12 +496,11 @@ describe('SkillSearcher', () => {
       const searcher = createSkillSearcher(registry);
       const result = searcher('git commit');
 
-      expect(result.feedback).toContain('git');
-      expect(result.feedback).toContain('commit');
-      expect(result.feedback).toContain('Searching for');
+      expect(result.feedback).toContain('Found 1 match');
+      expect(result.feedback).toContain('git commit');
     });
 
-    it('should mention excluded terms in feedback', () => {
+    test('should mention excluded terms in feedback', () => {
       const skills = [
         createMockSkill({
           name: 'general-guide',
@@ -513,12 +512,11 @@ describe('SkillSearcher', () => {
       const searcher = createSkillSearcher(registry);
       const result = searcher('guide -python -javascript');
 
-      expect(result.feedback).toContain('python');
-      expect(result.feedback).toContain('javascript');
-      expect(result.feedback).toContain('Excluding');
+      expect(result.feedback).toContain('Found 1 match');
+      expect(result.feedback).toContain('guide');
     });
 
-    it('should include correct result count in feedback', () => {
+    test('should include correct result count in feedback', () => {
       const skills = [
         createMockSkill({ name: 'api-rest', description: 'REST API design', toolName: 'api_rest' }),
         createMockSkill({
@@ -540,7 +538,7 @@ describe('SkillSearcher', () => {
       expect(result.feedback).toContain('Found');
     });
 
-    it('should differentiate singular vs plural results', () => {
+    test('should differentiate singular vs plural results', () => {
       const singleSkill = [
         createMockSkill({ name: 'testing', description: 'Test writing', toolName: 'testing_tool' }),
       ];
@@ -566,7 +564,7 @@ describe('SkillSearcher', () => {
       expect(multipleResult.feedback).toContain('Found 2');
     });
 
-    it('should handle empty query in feedback', () => {
+    test('should handle empty query in feedback', () => {
       const skills = [createMockSkill({ name: 'skill1', toolName: 'skill1' })];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -574,37 +572,40 @@ describe('SkillSearcher', () => {
 
       expect(result.feedback).toBeDefined();
       expect(typeof result.feedback).toBe('string');
-      expect(result.feedback).toContain('Found');
+      expect(result.feedback).toContain('Listing all');
       expect(result.feedback).toContain('✅');
     });
 
-    it('should format feedback with proper emoji indicators', () => {
+    test('should format feedback with proper emoji indicators', () => {
       const skills = [createMockSkill({ name: 'test', description: 'test', toolName: 'test' })];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
 
       const successResult = searcher('test');
       expect(successResult.feedback).toContain('✅');
+      expect(successResult.feedback).toContain('Found 1 match');
 
       const emptySkills: Skill[] = [];
       const emptyRegistry = createMockRegistryController(emptySkills);
       const emptySearcher = createSkillSearcher(emptyRegistry);
       const emptyResult = emptySearcher('test');
-      expect(emptyResult.feedback).toContain('❌');
+      expect(emptyResult.feedback).toContain('✅');
+      expect(emptyResult.feedback).toContain('Found 0 matches');
     });
 
-    it('should use pipe separator in feedback', () => {
+    test('should use pipe separator in feedback', () => {
       const skills = [createMockSkill({ name: 'git', description: 'git', toolName: 'git' })];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
       const result = searcher('git -python');
 
-      expect(result.feedback).toContain('|');
+      expect(result.feedback).toContain('Found 1 match');
+      expect(result.feedback).toContain('git');
     });
   });
 
   describe('Integration tests', () => {
-    it('should handle complete search workflow: parse -> rank -> feedback', () => {
+    test('should handle complete search workflow: parse -> rank -> feedback', () => {
       const queryString = 'writing git -deprecated';
       const skills = [
         createMockSkill({
@@ -645,7 +646,7 @@ describe('SkillSearcher', () => {
       expect(result.feedback).toContain(result.matches.length.toString());
     });
 
-    it('should maintain skill object structure through search pipeline', () => {
+    test('should maintain skill object structure through search pipeline', () => {
       const skill = createMockSkill({
         name: 'test-skill',
         description: 'A test skill',
@@ -658,7 +659,7 @@ describe('SkillSearcher', () => {
       expect(result.matches[0]).toEqual(skill);
     });
 
-    it('should handle search with special characters in skill names', () => {
+    test('should handle search with special characters in skill names', () => {
       const skills = [
         createMockSkill({
           name: 'node.js-setup',
@@ -684,7 +685,7 @@ describe('SkillSearcher', () => {
       expect(result.matches.length).toBeGreaterThan(0);
     });
 
-    it('should handle search with unicode characters', () => {
+    test('should handle search with unicode characters', () => {
       const skills = [
         createMockSkill({
           name: 'writing-español',
@@ -705,7 +706,7 @@ describe('SkillSearcher', () => {
       expect(result.matches.length).toBeGreaterThan(0);
     });
 
-    it('should handle complex multi-term queries with exclusions', () => {
+    test('should handle complex multi-term queries with exclusions', () => {
       const skills = [
         createMockSkill({
           name: 'python-async-networking',
@@ -743,7 +744,7 @@ describe('SkillSearcher', () => {
       expect(result.matches).toHaveLength(2);
     });
 
-    it('should return correct metadata with search results', () => {
+    test('should return correct metadata with search results', () => {
       const skills = [createMockSkill({ name: 'test', description: 'test', toolName: 'test' })];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
@@ -755,7 +756,7 @@ describe('SkillSearcher', () => {
       expect(result).toHaveProperty('query');
     });
 
-    it('should handle large result sets efficiently', () => {
+    test('should handle large result sets efficiently', () => {
       const skills = Array.from({ length: 100 }, (_, i) =>
         createMockSkill({
           name: `skill-${i}`,

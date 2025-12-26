@@ -7,7 +7,7 @@
  * Key: relative path
  * Value: object with mimetype
  */
-export type SkillResourceMap = Record<string, { mimetype: string }>;
+export type SkillResourceMap = Record<string, string>;
 
 /**
  * Skill definition parsed from SKILL.md
@@ -22,9 +22,9 @@ export type Skill = {
   license?: string;
   content: string; // Markdown body
   path: string; // Full path to SKILL.md
-  scripts: Record<string, { mimetype: string }>; // Script resources
-  references: Record<string, { mimetype: string }>; // Other resources
-  assets: Record<string, { mimetype: string }>; // Other resources
+  scripts: SkillResourceMap; // Script resources
+  references: SkillResourceMap; // Other resources
+  assets: SkillResourceMap; // Asset resources
 };
 
 /**
@@ -75,12 +75,8 @@ export type PluginConfig = {
   basePaths: string | string[];
 };
 
-export type PluginLogger = {
-  debug: (...message: unknown[]) => void;
-  log: (...message: unknown[]) => void;
-  error: (...message: unknown[]) => void;
-  warn: (...message: unknown[]) => void;
-};
+export type LogType = 'log' | 'debug' | 'error' | 'warn';
+export type PluginLogger = Record<LogType, (...message: unknown[]) => void>;
 
 /**
  * Skill registry map type

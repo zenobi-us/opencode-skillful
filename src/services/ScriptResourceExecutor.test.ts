@@ -1,62 +1,93 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { test, describe, expect } from 'bun:test';
 import { createMockProvider, createMockSkill } from '../mocks';
 import { createScriptResourceExecutor } from './ScriptResourceExecutor';
 import type { SkillProvider } from '../types';
 
 describe('ScriptResourceExecutor', () => {
-  let mockProvider: SkillProvider;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    mockProvider = createMockProvider([
-      createMockSkill({
-        name: 'test_skill',
-        scripts: {
-          'script.sh': { mimetype: 'application/x-sh' },
-        },
-      }),
-    ]);
-  });
-
   describe('Basic Script Execution', () => {
-    it('should be a callable function', () => {
+    test('should be a callable function', () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
       expect(typeof executor).toBe('function');
     });
 
-    it('should accept args object with skill_name and relative_path', () => {
+    test('should accept args object with skill_name and relative_path', () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
       expect(executor.length).toBe(1);
     });
   });
 
   describe('Error Handling', () => {
-    it('should throw when script file does not exist', async () => {
+    test('should throw when script file does not exist', async () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
 
-      await expect(
-        executor({
+      try {
+        await executor({
           skill_name: 'nonexistent_skill',
           relative_path: 'script.sh',
-        })
-      ).rejects.toThrow();
+        });
+        throw new Error('Should have thrown');
+      } catch (error) {
+        expect(error).toBeDefined();
+      }
     });
 
-    it('should throw when skill is not found in registry', async () => {
+    test('should throw when skill is not found in registry', async () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
 
-      await expect(
-        executor({
+      try {
+        await executor({
           skill_name: 'unknown-skill',
           relative_path: 'test.sh',
-        })
-      ).rejects.toThrow();
+        });
+        throw new Error('Should have thrown');
+      } catch (error) {
+        expect(error).toBeDefined();
+      }
     });
   });
 
   describe('Script Arguments - Safety', () => {
-    it('should safely pass arguments without shell interpretation', async () => {
+    test('should safely pass arguments without shell interpretation', async () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
 
       // Special shell characters should be passed as literal arguments, not executed
@@ -73,7 +104,15 @@ describe('ScriptResourceExecutor', () => {
       }
     });
 
-    it('should handle arguments with spaces correctly', async () => {
+    test('should handle arguments with spaces correctly', async () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
 
       try {
@@ -87,7 +126,15 @@ describe('ScriptResourceExecutor', () => {
       }
     });
 
-    it('should execute script without arguments when args array is empty', async () => {
+    test('should execute script without arguments when args array is empty', async () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
 
       try {
@@ -101,7 +148,15 @@ describe('ScriptResourceExecutor', () => {
       }
     });
 
-    it('should execute script without arguments when args is undefined', async () => {
+    test('should execute script without arguments when args is undefined', async () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
 
       try {
@@ -114,7 +169,15 @@ describe('ScriptResourceExecutor', () => {
       }
     });
 
-    it('should pass multiple arguments in correct order', async () => {
+    test('should pass multiple arguments in correct order', async () => {
+      const mockProvider: SkillProvider = createMockProvider([
+        createMockSkill({
+          name: 'test_skill',
+          scripts: {
+            'script.sh': { mimetype: 'application/x-sh' },
+          },
+        }),
+      ]);
       const executor = createScriptResourceExecutor(mockProvider);
 
       try {

@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { test, describe, expect } from 'bun:test';
 import { parseQuery, rankSkill, shouldIncludeSkill, generateFeedback } from './SkillSearcher';
 import { createMockSkill } from '../mocks';
 import type { Skill } from '../types';
 
 describe('parseQuery', () => {
-  it('should parse empty string', () => {
+  test('should parse empty string', () => {
     const result = parseQuery('');
     expect(result.include).toHaveLength(0);
     expect(result.exclude).toHaveLength(0);
@@ -13,7 +13,7 @@ describe('parseQuery', () => {
     expect(result.termCount).toBe(0);
   });
 
-  it('should parse single positive term', () => {
+  test('should parse single positive term', () => {
     const result = parseQuery('api');
     expect(result.include).toContain('api');
     expect(result.exclude).toHaveLength(0);
@@ -22,7 +22,7 @@ describe('parseQuery', () => {
     expect(result.termCount).toBe(1);
   });
 
-  it('should parse multiple positive terms', () => {
+  test('should parse multiple positive terms', () => {
     const result = parseQuery('git commit workflow');
     expect(result.include).toEqual(['git', 'commit', 'workflow']);
     expect(result.exclude).toHaveLength(0);
@@ -30,7 +30,7 @@ describe('parseQuery', () => {
     expect(result.termCount).toBe(3);
   });
 
-  it('should parse negative terms with minus prefix', () => {
+  test('should parse negative terms with minus prefix', () => {
     const result = parseQuery('-python -deprecated');
     expect(result.exclude).toContain('python');
     expect(result.exclude).toContain('deprecated');
@@ -38,7 +38,7 @@ describe('parseQuery', () => {
     expect(result.hasExclusions).toBe(true);
   });
 
-  it('should parse mixed positive and negative terms', () => {
+  test('should parse mixed positive and negative terms', () => {
     const result = parseQuery('api -python -legacy');
     expect(result.include).toContain('api');
     expect(result.exclude).toContain('python');
@@ -47,52 +47,52 @@ describe('parseQuery', () => {
     expect(result.termCount).toBe(3);
   });
 
-  it('should convert terms to lowercase', () => {
+  test('should convert terms to lowercase', () => {
     const result = parseQuery('API TESTING -PYTHON');
     expect(result.include).toContain('api');
     expect(result.include).toContain('testing');
     expect(result.exclude).toContain('python');
   });
 
-  it('should filter out empty terms', () => {
+  test('should filter out empty terms', () => {
     const result = parseQuery('   api   testing   ');
     expect(result.include).toContain('api');
     expect(result.include).toContain('testing');
     expect(result.include).not.toContain('');
   });
 
-  it('should handle quoted phrases', () => {
+  test('should handle quoted phrases', () => {
     const result = parseQuery('"git commit" message');
     expect(result.include.length).toBeGreaterThan(0);
     expect(result.originalQuery).toBe('"git commit" message');
   });
 
-  it('should preserve original query string', () => {
+  test('should preserve original query string', () => {
     const queryString = 'Git Workflow -Deprecated';
     const result = parseQuery(queryString);
     expect(result.originalQuery).toBe(queryString);
   });
 
-  it('should track term count including negations', () => {
+  test('should track term count including negations', () => {
     const result = parseQuery('api gateway -python');
     expect(result.termCount).toBe(3);
   });
 
-  it('should handle only negation terms', () => {
+  test('should handle only negation terms', () => {
     const result = parseQuery('-old -deprecated');
     expect(result.exclude).toHaveLength(2);
     expect(result.include).toHaveLength(0);
     expect(result.hasExclusions).toBe(true);
   });
 
-  it('should handle special characters in terms', () => {
+  test('should handle special characters in terms', () => {
     const result = parseQuery('node.js c++ @typescript');
     expect(result.include.length).toBeGreaterThan(0);
   });
 });
 
 describe('rankSkill', () => {
-  it('should give exact name match maximum score', () => {
+  test('should give exact name match maximum score', () => {
     const skill: Skill = createMockSkill({
       name: 'git',
       description: 'version control',
@@ -104,7 +104,7 @@ describe('rankSkill', () => {
     expect(result.descMatches).toBe(0);
   });
 
-  it('should not give exact bonus for multi-term queries', () => {
+  test('should not give exact bonus for multi-term queries', () => {
     const skill: Skill = createMockSkill({
       name: 'git',
       description: 'version control',
@@ -116,7 +116,7 @@ describe('rankSkill', () => {
     expect(result.descMatches).toBe(1);
   });
 
-  it('should score name matches higher than description matches', () => {
+  test('should score name matches higher than description matches', () => {
     const skill: Skill = createMockSkill({
       name: 'git-commit',
       description: 'writing guides',
@@ -128,7 +128,7 @@ describe('rankSkill', () => {
     expect(result.totalScore).toBe(3); // 1 * 3 + 0 * 1
   });
 
-  it('should count one match per term regardless of occurrences', () => {
+  test('should count one match per term regardless of occurrences', () => {
     const skill: Skill = createMockSkill({
       name: 'git-git-git-workflow',
       description: 'patterns',
@@ -141,7 +141,7 @@ describe('rankSkill', () => {
     expect(result.totalScore).toBe(3); // 1 * 3
   });
 
-  it('should count description matches when term not in name', () => {
+  test('should count description matches when term not in name', () => {
     const skill: Skill = createMockSkill({
       name: 'workflow',
       description: 'git patterns and git control',
@@ -154,7 +154,7 @@ describe('rankSkill', () => {
     expect(result.totalScore).toBe(1); // 1 * 1
   });
 
-  it('should handle multiple search terms', () => {
+  test('should handle multiple search terms', () => {
     const skill: Skill = createMockSkill({
       name: 'git-commit-workflow',
       description: 'guide for version control',
@@ -166,7 +166,7 @@ describe('rankSkill', () => {
     expect(result.totalScore).toBe(9); // 3 * 3
   });
 
-  it('should handle no matching terms', () => {
+  test('should handle no matching terms', () => {
     const skill: Skill = createMockSkill({
       name: 'testing',
       description: 'test patterns',
@@ -178,7 +178,7 @@ describe('rankSkill', () => {
     expect(result.totalScore).toBe(0);
   });
 
-  it('should perform case-insensitive matching', () => {
+  test('should perform case-insensitive matching', () => {
     const skill: Skill = createMockSkill({
       name: 'Git-Commit',
       description: 'Git Workflow',
@@ -189,7 +189,7 @@ describe('rankSkill', () => {
     expect(result.descMatches).toBe(0);
   });
 
-  it('should handle partial term matching', () => {
+  test('should handle partial term matching', () => {
     const skill: Skill = createMockSkill({
       name: 'github-actions',
       description: 'version control automation',
@@ -202,7 +202,7 @@ describe('rankSkill', () => {
     expect(result.totalScore).toBe(3); // 1 * 3
   });
 
-  it('should return skill object in result', () => {
+  test('should return skill object in result', () => {
     const skill: Skill = createMockSkill({
       name: 'test',
       description: 'test desc',
@@ -212,7 +212,7 @@ describe('rankSkill', () => {
     expect(result.skill).toBe(skill);
   });
 
-  it('should handle empty include terms array', () => {
+  test('should handle empty include terms array', () => {
     const skill: Skill = createMockSkill({
       name: 'git',
       description: 'version control',
@@ -224,7 +224,7 @@ describe('rankSkill', () => {
     expect(result.totalScore).toBe(0);
   });
 
-  it('should count only first match per term', () => {
+  test('should count only first match per term', () => {
     const skill: Skill = createMockSkill({
       name: 'git workflow',
       description: 'git is used in workflow',
@@ -238,7 +238,7 @@ describe('rankSkill', () => {
 });
 
 describe('shouldIncludeSkill', () => {
-  it('should include skill when no exclusions', () => {
+  test('should include skill when no exclusions', () => {
     const skill: Skill = createMockSkill({
       name: 'python-guide',
       description: 'Python basics',
@@ -248,7 +248,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(true);
   });
 
-  it('should exclude skill matching single exclusion term in name', () => {
+  test('should exclude skill matching single exclusion term in name', () => {
     const skill: Skill = createMockSkill({
       name: 'python-guide',
       description: 'guide',
@@ -258,7 +258,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(false);
   });
 
-  it('should exclude skill matching exclusion term in description', () => {
+  test('should exclude skill matching exclusion term in description', () => {
     const skill: Skill = createMockSkill({
       name: 'guide',
       description: 'Python programming',
@@ -268,7 +268,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(false);
   });
 
-  it('should exclude skill matching any exclusion term', () => {
+  test('should exclude skill matching any exclusion term', () => {
     const skill: Skill = createMockSkill({
       name: 'python-javascript-guide',
       description: 'Multi-language guide',
@@ -278,7 +278,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(false);
   });
 
-  it('should perform case-insensitive matching', () => {
+  test('should perform case-insensitive matching', () => {
     const skill: Skill = createMockSkill({
       name: 'Python-Guide',
       description: 'Guide content',
@@ -288,7 +288,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(false);
   });
 
-  it('should match partial terms (substrings)', () => {
+  test('should match partial terms (substrings)', () => {
     const skill: Skill = createMockSkill({
       name: 'deprecated-guide',
       description: 'Old patterns',
@@ -298,7 +298,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(false);
   });
 
-  it('should include skill not matching any exclusion', () => {
+  test('should include skill not matching any exclusion', () => {
     const skill: Skill = createMockSkill({
       name: 'rust-guide',
       description: 'Rust programming',
@@ -308,7 +308,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(true);
   });
 
-  it('should handle multiple exclusion terms correctly', () => {
+  test('should handle multiple exclusion terms correctly', () => {
     const skill: Skill = createMockSkill({
       name: 'general-guide',
       description: 'General programming patterns',
@@ -318,7 +318,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(true);
   });
 
-  it('should check both name and description together', () => {
+  test('should check both name and description together', () => {
     const skill: Skill = createMockSkill({
       name: 'api-guide',
       description: 'deprecated patterns',
@@ -328,7 +328,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(false);
   });
 
-  it('should handle empty skill name and description', () => {
+  test('should handle empty skill name and description', () => {
     const skill: Skill = createMockSkill({
       name: '',
       description: '',
@@ -338,7 +338,7 @@ describe('shouldIncludeSkill', () => {
     expect(result).toBe(true);
   });
 
-  it('should handle special characters in exclusion terms', () => {
+  test('should handle special characters in exclusion terms', () => {
     const skill: Skill = createMockSkill({
       name: 'c++-guide',
       description: 'C++ programming',
@@ -350,7 +350,7 @@ describe('shouldIncludeSkill', () => {
 });
 
 describe('generateFeedback', () => {
-  it('should show included terms in feedback', () => {
+  test('should show included terms in feedback', () => {
     const query = parseQuery('api testing');
     const feedback = generateFeedback(query, 2);
 
@@ -359,7 +359,7 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('Searching for');
   });
 
-  it('should show excluded terms in feedback', () => {
+  test('should show excluded terms in feedback', () => {
     const query = parseQuery('guide -python');
     const feedback = generateFeedback(query, 1);
 
@@ -367,7 +367,7 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('Excluding');
   });
 
-  it('should show match count for zero results', () => {
+  test('should show match count for zero results', () => {
     const query = parseQuery('nonexistent');
     const feedback = generateFeedback(query, 0);
 
@@ -375,7 +375,7 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('❌');
   });
 
-  it('should show singular "match" for one result', () => {
+  test('should show singular "match" for one result', () => {
     const query = parseQuery('git');
     const feedback = generateFeedback(query, 1);
 
@@ -383,7 +383,7 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('✅');
   });
 
-  it('should show plural "matches" for multiple results', () => {
+  test('should show plural "matches" for multiple results', () => {
     const query = parseQuery('api');
     const feedback = generateFeedback(query, 5);
 
@@ -391,14 +391,14 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('✅');
   });
 
-  it('should use pipe separator between sections', () => {
+  test('should use pipe separator between sections', () => {
     const query = parseQuery('api -python');
     const feedback = generateFeedback(query, 2);
 
     expect(feedback.split('|').length).toBeGreaterThan(1);
   });
 
-  it('should handle query with only inclusions', () => {
+  test('should handle query with only inclusions', () => {
     const query = parseQuery('git commit');
     const feedback = generateFeedback(query, 3);
 
@@ -407,7 +407,7 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('Found 3');
   });
 
-  it('should handle query with only exclusions', () => {
+  test('should handle query with only exclusions', () => {
     const query = parseQuery('-python');
     const feedback = generateFeedback(query, 2);
 
@@ -415,7 +415,7 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('Found 2');
   });
 
-  it('should include success emoji for matches', () => {
+  test('should include success emoji for matches', () => {
     const query = parseQuery('test');
     const feedback = generateFeedback(query, 1);
 
@@ -423,7 +423,7 @@ describe('generateFeedback', () => {
     expect(feedback).not.toContain('❌');
   });
 
-  it('should include error emoji for no matches', () => {
+  test('should include error emoji for no matches', () => {
     const query = parseQuery('test');
     const feedback = generateFeedback(query, 0);
 
@@ -431,7 +431,7 @@ describe('generateFeedback', () => {
     expect(feedback).not.toContain('✅');
   });
 
-  it('should format multiple included terms as comma-separated list', () => {
+  test('should format multiple included terms as comma-separated list', () => {
     const query = parseQuery('git commit workflow');
     const feedback = generateFeedback(query, 2);
 
@@ -440,7 +440,7 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('workflow');
   });
 
-  it('should format multiple excluded terms as comma-separated list', () => {
+  test('should format multiple excluded terms as comma-separated list', () => {
     const query = parseQuery('guide -old -deprecated');
     const feedback = generateFeedback(query, 1);
 
@@ -448,7 +448,7 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('deprecated');
   });
 
-  it('should handle empty query gracefully', () => {
+  test('should handle empty query gracefully', () => {
     const query = parseQuery('');
     const feedback = generateFeedback(query, 5);
 
@@ -456,7 +456,7 @@ describe('generateFeedback', () => {
     expect(feedback.length).toBeGreaterThan(0);
   });
 
-  it('should always include match count in feedback', () => {
+  test('should always include match count in feedback', () => {
     const testCases = [
       { query: parseQuery('test'), matchCount: 0 },
       { query: parseQuery('test'), matchCount: 1 },
@@ -476,28 +476,28 @@ describe('generateFeedback', () => {
 
 describe('SkillSearcher - Edge Cases', () => {
   describe('Exact phrase matching (quoted)', () => {
-    it('should handle quoted phrases in parseQuery', () => {
+    test('should handle quoted phrases in parseQuery', () => {
       const result = parseQuery('"git commit" workflow');
       expect(result.include.length).toBeGreaterThan(0);
       expect(result.originalQuery).toBe('"git commit" workflow');
     });
 
-    it('should parse single quoted term', () => {
+    test('should parse single quoted term', () => {
       const result = parseQuery('"nodejs"');
       expect(result.include.length).toBeGreaterThan(0);
     });
 
-    it('should handle quoted negation', () => {
+    test('should handle quoted negation', () => {
       const result = parseQuery('-"deprecated feature"');
       expect(result.exclude.length).toBeGreaterThan(0);
     });
 
-    it('should handle multiple quoted phrases', () => {
+    test('should handle multiple quoted phrases', () => {
       const result = parseQuery('"git workflow" "best practices"');
       expect(result.include.length).toBeGreaterThan(0);
     });
 
-    it('should handle mismatched quotes', () => {
+    test('should handle mismatched quotes', () => {
       const result = parseQuery('"git workflow');
       // Should parse gracefully even with unmatched quotes
       expect(result).toHaveProperty('include');
@@ -506,45 +506,45 @@ describe('SkillSearcher - Edge Cases', () => {
   });
 
   describe('Query normalization - Unicode and emoji', () => {
-    it('should handle Unicode characters in query', () => {
+    test('should handle Unicode characters in query', () => {
       const result = parseQuery('café typescript');
       expect(result.include.length).toBeGreaterThan(0);
       expect(result.include.some((t) => t.includes('caf'))).toBe(true);
     });
 
-    it('should handle emoji in query', () => {
+    test('should handle emoji in query', () => {
       const result = parseQuery('🚀 rocket launch');
       expect(result.include.length).toBeGreaterThan(0);
     });
 
-    it('should handle mixed Unicode and ASCII', () => {
+    test('should handle mixed Unicode and ASCII', () => {
       const result = parseQuery('Überschrift title élève');
       expect(result.include.length).toBeGreaterThan(0);
     });
 
-    it('should normalize accented characters', () => {
+    test('should normalize accented characters', () => {
       const result = parseQuery('naïve résumé');
       expect(result.include.length).toBeGreaterThan(0);
     });
 
-    it('should handle RTL characters', () => {
+    test('should handle RTL characters', () => {
       const result = parseQuery('مرحبا hello');
       expect(result.include.length).toBeGreaterThan(0);
     });
 
-    it('should handle zero-width characters gracefully', () => {
+    test('should handle zero-width characters gracefully', () => {
       const result = parseQuery('test\u200Bskill');
       expect(result).toHaveProperty('include');
     });
 
-    it('should handle combining diacriticals', () => {
+    test('should handle combining diacriticals', () => {
       const result = parseQuery('e\u0301 data'); // é as e + combining acute
       expect(result.include.length).toBeGreaterThan(0);
     });
   });
 
   describe('Ranking tie-breaking', () => {
-    it('should sort by name alphabetically when scores equal', () => {
+    test('should sort by name alphabetically when scores equal', () => {
       const skills: Skill[] = [
         createMockSkill({ name: 'zebra-api', description: 'api reference' }),
         createMockSkill({ name: 'api-guide', description: 'api reference' }),
@@ -569,7 +569,7 @@ describe('SkillSearcher - Edge Cases', () => {
       expect(results[2].skill.name).toBe('zebra-api');
     });
 
-    it('should prioritize higher scores over alphabetical order', () => {
+    test('should prioritize higher scores over alphabetical order', () => {
       const skills: Skill[] = [
         createMockSkill({ name: 'aaa-skill', description: 'no match' }),
         createMockSkill({ name: 'zzzapi', description: 'no match' }),
@@ -590,7 +590,7 @@ describe('SkillSearcher - Edge Cases', () => {
       expect(results[1].totalScore).toBe(0); // no match
     });
 
-    it('should handle exact match bonus in tie-breaking', () => {
+    test('should handle exact match bonus in tie-breaking', () => {
       const skills: Skill[] = [
         createMockSkill({ name: 'git', description: 'version control' }),
         createMockSkill({ name: 'github', description: 'git hosting' }),
@@ -612,41 +612,41 @@ describe('SkillSearcher - Edge Cases', () => {
   });
 
   describe('Path prefix edge cases', () => {
-    it('should handle case sensitivity in tool names', () => {
+    test('should handle case sensitivity in tool names', () => {
       const result = parseQuery('Git');
       expect(result.include).toContain('git');
       // Normalized to lowercase
       expect(result.include).not.toContain('Git');
     });
 
-    it('should handle mixed case query terms', () => {
+    test('should handle mixed case query terms', () => {
       const result = parseQuery('GitHUB TypeScript');
       expect(result.include).toContain('github');
       expect(result.include).toContain('typescript');
     });
 
-    it('should handle path separators in search', () => {
+    test('should handle path separators in search', () => {
       const result = parseQuery('skills/git');
       expect(result.include.length).toBeGreaterThan(0);
     });
 
-    it('should handle dots in tool names', () => {
+    test('should handle dots in tool names', () => {
       const result = parseQuery('node.js');
       expect(result.include).toContain('node.js');
     });
 
-    it('should handle hyphens in tool names', () => {
+    test('should handle hyphens in tool names', () => {
       const result = parseQuery('git-flow workflow');
       expect(result.include).toContain('git-flow');
       expect(result.include).toContain('workflow');
     });
 
-    it('should handle underscores in tool names', () => {
+    test('should handle underscores in tool names', () => {
       const result = parseQuery('test_framework');
       expect(result.include).toContain('test_framework');
     });
 
-    it('should handle special characters in paths', () => {
+    test('should handle special characters in paths', () => {
       const result = parseQuery('c++ rust');
       expect(result.include).toContain('c++');
       expect(result.include).toContain('rust');
@@ -654,23 +654,23 @@ describe('SkillSearcher - Edge Cases', () => {
   });
 
   describe('Query edge cases - empty and whitespace', () => {
-    it('should handle tabs and newlines', () => {
+    test('should handle tabs and newlines', () => {
       const result = parseQuery('git\t\nworkflow');
       expect(result.include.length).toBeGreaterThan(0);
     });
 
-    it('should handle multiple spaces between terms', () => {
+    test('should handle multiple spaces between terms', () => {
       const result = parseQuery('git    workflow    design');
       expect(result.include.length).toBe(3);
     });
 
-    it('should handle leading and trailing whitespace', () => {
+    test('should handle leading and trailing whitespace', () => {
       const result = parseQuery('   git workflow   ');
       expect(result.include).toContain('git');
       expect(result.include).toContain('workflow');
     });
 
-    it('should handle only whitespace', () => {
+    test('should handle only whitespace', () => {
       const result = parseQuery('   \t\n  ');
       // search-string parses whitespace as a segment, but filtering removes it
       expect(result.include).toHaveLength(0);
@@ -679,7 +679,7 @@ describe('SkillSearcher - Edge Cases', () => {
       expect(result.termCount).toBe(1);
     });
 
-    it('should handle very long queries', () => {
+    test('should handle very long queries', () => {
       const longQuery = Array(100).fill('term').join(' ');
       const result = parseQuery(longQuery);
       expect(result.include.length).toBeGreaterThan(0);
@@ -688,7 +688,7 @@ describe('SkillSearcher - Edge Cases', () => {
   });
 
   describe('Ranking with special cases', () => {
-    it('should handle skills with empty descriptions', () => {
+    test('should handle skills with empty descriptions', () => {
       const skill = createMockSkill({ name: 'test', description: '' });
       const result = rankSkill(skill, ['test']);
 
@@ -696,7 +696,7 @@ describe('SkillSearcher - Edge Cases', () => {
       expect(result.totalScore).toBe(13); // 1 * 3 + exact bonus 10
     });
 
-    it('should handle very long skill names', () => {
+    test('should handle very long skill names', () => {
       const longName = 'a'.repeat(500);
       const skill = createMockSkill({ name: longName, description: 'description' });
       const result = rankSkill(skill, ['a']);
@@ -704,14 +704,14 @@ describe('SkillSearcher - Edge Cases', () => {
       expect(result.nameMatches).toBe(1);
     });
 
-    it('should handle numeric terms in queries', () => {
+    test('should handle numeric terms in queries', () => {
       const skill = createMockSkill({ name: 'python3-guide', description: 'Python 3 tutorial' });
       const result = rankSkill(skill, ['3']);
 
       expect(result.totalScore).toBeGreaterThan(0);
     });
 
-    it('should handle scores with many matches', () => {
+    test('should handle scores with many matches', () => {
       const skill = createMockSkill({
         name: 'api-api-api',
         description: 'api api api api',

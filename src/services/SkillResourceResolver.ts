@@ -1,6 +1,6 @@
-import * as Bun from 'bun';
 import type { Skill, SkillProvider } from '../types';
-import path from 'node:path';
+
+import { readSkillFile } from './SkillFs';
 
 /**
  * Skill resources are mapped on startup as a dictionary of relative paths to resource metadata.
@@ -31,7 +31,6 @@ export function createSkillResourceResolver(provider: SkillProvider) {
   }): Promise<{
     absolute_path: string;
     content: string;
-    mimeType: string;
   }> => {
     // Try to find skill by toolName first, then by name (backward compat)
     const skill = provider.registry.get(args.skill_name);
@@ -40,25 +39,20 @@ export function createSkillResourceResolver(provider: SkillProvider) {
     }
 
     const resourceMap = resolveResourceMap(skill, args.type);
-    const resource = resourceMap[args.relative_path];
+    const resourcePath = resourceMap[args.relative_path];
 
-    if (!resource) {
+    if (!resourcePath) {
       throw new Error(
         `Resource not found: Skill "${args.skill_name}" does not have a ${args.type} at path "${args.relative_path}"`
       );
     }
 
-    const resourcePath = path.join(skill.fullPath, args.relative_path);
-
     try {
-      const file = Bun.file(resourcePath);
-      const contents = await file.text();
-      const mimeType = file.type || 'application/octet-stream';
+      const content = await readSkillFile(resourcePath);
 
       return {
         absolute_path: resourcePath,
-        content: contents,
-        mimeType,
+        content,
       };
     } catch (error) {
       throw new Error(

@@ -58,10 +58,15 @@ async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
 export const SkillsPlugin: Plugin = async (ctx) => {
   const config = await getPluginConfig(ctx);
   const logger = createLogger(config);
-  const provider = await createSkillProvider({
+  const registry = await createSkillRegistry(config, logger, async (path) => {
+    const data = await Bun.file(path).text();
+    return data.toString();
+  });
+
+  const provider = createSkillProvider({
     config,
     logger,
-    ...(await createSkillRegistry(config, logger)),
+    ...registry,
   });
 
   return {

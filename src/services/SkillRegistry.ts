@@ -9,16 +9,11 @@ import {
   SkillResourceMap,
 } from '../types';
 
-import { dirname, basename, sep, join } from 'node:path';
-import { lstat } from 'node:fs/promises';
+import { dirname, basename, sep } from 'node:path';
 import matter from 'gray-matter';
-import mime from 'mime';
 import { toolName } from './identifiers';
+import { DiscoveredSkillPath, findSkillPaths, listSkillFiles, readSkillFile } from './SkillFs';
 
-type DiscoveredSkillPath = {
-  basePath: string;
-  absolutePath: string;
-};
 // Validation Schema
 const SkillFrontmatterSchema = tool.schema.object({
   name: tool.schema.string().optional(),
@@ -77,7 +72,12 @@ export async function createSkillRegistry(
   };
 
   // Find all SKILL.md files recursively
-  const matches = await findSkillPaths(config.basePaths);
+  const basePaths = Array.isArray(config.basePaths) ? config.basePaths : [config.basePaths];
+  const matches: DiscoveredSkillPath[] = [];
+  for await (const basePath of basePaths) {
+    const found = await findSkillPaths(basePath);
+    matches.push(...found);
+  }
   logger.debug(
     'discovered',
     matches.map((m) => m.absolutePath)
@@ -89,7 +89,8 @@ export async function createSkillRegistry(
 
   for await (const match of matches) {
     try {
-      const skill = await parseSkill(match);
+      const content = await readSkillFile(match.absolutePath);
+      const skill = await parseSkill(match, content);
 
       if (!skill) {
         debug.rejected++;
@@ -115,25 +116,19 @@ export async function createSkillRegistry(
 }
 
 /**
- * Infer resource type from file path using mime package
- */
-function inferResourceType(filePath: string): string {
-  return mime.getType(filePath) || 'application/octet-stream';
-}
-
-/**
  * Parse a SKILL.md file and return structured skill data
  * Returns null if parsing fails (with error logging)
  */
-async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null> {
+async function parseSkill(skillPath: DiscoveredSkillPath, content?: string): Promise<Skill | null> {
   const relativePath = skillPath.absolutePath.replace(skillPath.basePath + sep, '');
 
   if (!relativePath) {
     throw new Error(`❌ Skill path does not match expected pattern: ${skillPath.absolutePath}`);
   }
 
-  // Read file
-  const content = await Bun.file(skillPath.absolutePath).text();
+  if (!content) {
+    throw new Error(`❌ Unable to read skill file: ${skillPath.absolutePath}`);
+  }
 
   // Parse YAML frontmatter
   const parsed = matter(content);
@@ -175,71 +170,19 @@ async function parseSkill(skillPath: DiscoveredSkillPath): Promise<Skill | null>
     metadata: frontmatter.data.metadata,
     name: shortName,
     path: skillPath.absolutePath,
-    scripts: createSkillResourceMap(scriptPaths),
-    references: createSkillResourceMap(referencePaths),
-    assets: createSkillResourceMap(assetPaths),
+    scripts: createSkillResourceMap(skillFullPath, scriptPaths),
+    references: createSkillResourceMap(skillFullPath, referencePaths),
+    assets: createSkillResourceMap(skillFullPath, assetPaths),
   };
 }
 
-export function createSkillResourceMap(filePaths: string[]): SkillResourceMap {
+export function createSkillResourceMap(skillPath: string, filePaths: string[]): SkillResourceMap {
   const output: SkillResourceMap = {};
 
   for (const filePath of filePaths) {
-    output[filePath] = {
-      mimetype: inferResourceType(filePath),
-    };
+    const relativePath = filePath.replace(skillPath + sep, '');
+    output[relativePath] = filePath;
   }
 
   return output;
-}
-
-/**
- * List all files in a skill subdirectory (e.g., scripts/, resources/)
- * Returns a flat array of absolute file paths
- *
- * @param skillPath - Base path to the skill directory
- * @param subdirectory - Subdirectory to scan (e.g., 'scripts', 'resources')
- * @returns Array of absolute file paths
- */
-export async function listSkillFiles(skillPath: string, subdirectory: string): Promise<string[]> {
-  const targetPath = join(skillPath, subdirectory);
-
-  const stat = await lstat(targetPath).catch(() => null);
-  if (!stat?.isDirectory()) {
-    return [];
-  }
-
-  const glob = new Bun.Glob('**/*');
-  const results: string[] = [];
-
-  for await (const match of glob.scan({ cwd: targetPath, absolute: true })) {
-    const fileStat = await lstat(match).catch(() => null);
-    if (fileStat?.isFile()) {
-      results.push(match);
-    }
-  }
-
-  return results;
-}
-
-async function findSkillPaths(basePaths: string | string[]): Promise<DiscoveredSkillPath[]> {
-  const basePathsArray = Array.isArray(basePaths) ? basePaths : [basePaths];
-  const results: DiscoveredSkillPath[] = [];
-
-  const glob = new Bun.Glob('**/SKILL.md');
-
-  for (const basePath of basePathsArray) {
-    try {
-      for await (const match of glob.scan({ cwd: basePath, absolute: true })) {
-        results.push({
-          basePath,
-          absolutePath: match,
-        });
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  return results;
 }
