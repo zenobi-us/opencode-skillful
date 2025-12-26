@@ -25,7 +25,6 @@
  */
 
 import { join } from 'path';
-import * as os from 'os';
 
 import type { Plugin, PluginInput } from '@opencode-ai/plugin';
 import envPaths from 'env-paths';

@@ -8,7 +8,6 @@ import type {
   SkillRegistryController,
   SkillSearcher,
 } from '../types';
-import { normalizePathQuery, stripSkillsPrefix } from './identifiers';
 
 /**
  * Parse a user query into structured search terms
@@ -158,7 +157,7 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
   /**
    * Execute a search query and return ranked results
    */
-  return function search(queryString: string): SkillSearchResult {
+  return function search(queryString: string | string[]): SkillSearchResult {
     const resolved = resolveQuery(queryString);
     const feedback = resolved.feedback;
     const query = resolved.query;
