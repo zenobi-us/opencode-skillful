@@ -8,6 +8,8 @@ export function createSkillLoader(provider: SkillRegistry) {
    * Load multiple skills into the chat
    */
   async function loadSkills(skillNames: string[], onLoad: (content: string) => Promise<void>) {
+    await provider.controller.ready.promise;
+
     const loaded: string[] = [];
     const notFound: string[] = [];
 

@@ -36,6 +36,7 @@ export function createSkillRegistryController() {
   const store = new Map<string, Skill>();
 
   const controller: SkillRegistryController = {
+    ready: Promise.withResolvers(),
     get skills() {
       return Array.from(store.values()).sort((a, b) => a.name.localeCompare(b.name));
     },
@@ -96,6 +97,8 @@ export async function createSkillRegistry(
     debug.parsed = results.parsed;
     debug.rejected = results.rejected;
     debug.errors = results.errors;
+
+    controller.ready.resolve();
   };
 
   const matchBasePath = (absolutePath: string): string | null => {

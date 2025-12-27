@@ -105,6 +105,7 @@ export type SkillSearcher = (_query: string | string[]) => SkillSearchResult;
  * Skill registry controller interface
  */
 export type SkillRegistryController = {
+  ready: ReturnType<typeof Promise.withResolvers>;
   skills: Skill[];
   ids: string[];
   clear: () => void;
@@ -128,4 +129,16 @@ export type SkillRegistry = {
   search: SkillSearcher;
   debug?: SkillRegistryDebugInfo;
   logger: PluginLogger;
+};
+
+const ResourceTypes = ['script', 'asset', 'reference'] as const;
+type ResourceType = (typeof ResourceTypes)[number];
+
+/**
+ * Asserts that the provided type is a valid ResourceType
+ */
+export const assertIsValidResourceType: (type: string) => asserts type is ResourceType = (type) => {
+  if (!ResourceTypes.includes(type as ResourceType)) {
+    throw new Error(`Invalid resource type: ${type}`);
+  }
 };

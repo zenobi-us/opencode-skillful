@@ -5,6 +5,8 @@ import type { SkillRegistry } from '../types';
  */
 export function createSkillFinder(provider: SkillRegistry) {
   return async (args: { query: string | string[] }) => {
+    await provider.controller.ready.promise;
+
     const result = provider.search(args.query);
 
     const skills = result.matches.map((skill) => ({

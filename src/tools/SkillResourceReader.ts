@@ -1,14 +1,21 @@
+import path from 'node:path';
 import { createSkillResourceResolver } from '../services/SkillResourceResolver';
-import { SkillRegistry } from '../types';
+import { assertIsValidResourceType, SkillRegistry } from '../types';
 
 export function createSkillResourceReader(provider: SkillRegistry) {
   const skillResourceResolver = createSkillResourceResolver(provider);
 
   return async (args: { skill_name: string; relative_path: string }) => {
+    await provider.controller.ready.promise;
+
+    const [type, ...restPath] = args.relative_path.split('/');
+
+    assertIsValidResourceType(type);
+
     const resource = await skillResourceResolver({
       skill_name: args.skill_name,
-      type: 'reference',
-      relative_path: args.relative_path,
+      type,
+      relative_path: path.join(...restPath),
     });
 
     // Inject content silently
