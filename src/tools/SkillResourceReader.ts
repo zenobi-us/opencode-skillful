@@ -1,8 +1,7 @@
-import { type PluginInput } from '@opencode-ai/plugin';
 import { createSkillResourceResolver } from '../services/SkillResourceResolver';
-import { SkillProvider } from '../types';
+import { SkillRegistry } from '../types';
 
-export function createSkillResourceReader(ctx: PluginInput, provider: SkillProvider) {
+export function createSkillResourceReader(provider: SkillRegistry) {
   const skillResourceResolver = createSkillResourceResolver(provider);
 
   return async (args: { skill_name: string; relative_path: string }) => {

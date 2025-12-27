@@ -13,13 +13,13 @@ import { dirname, basename, relative } from 'node:path';
 import matter from 'gray-matter';
 import { toolName } from './identifiers';
 import {
-  DiscoveredSkillPath,
   doesPathExist,
   findSkillPaths,
   listSkillFiles,
   readSkillFile,
   detectMimeType,
 } from './SkillFs';
+import { createSkillSearcher } from './SkillSearcher';
 
 // Validation Schema
 const SkillFrontmatterSchema = tool.schema.object({
@@ -32,24 +32,28 @@ const SkillFrontmatterSchema = tool.schema.object({
   metadata: tool.schema.record(tool.schema.string(), tool.schema.string()).optional(),
 });
 
-export function createSkillRegistryController(skills?: Skill[]): SkillRegistryController {
-  const registry: SkillRegistry = new Map(
-    !skills ? [] : skills.map((skill) => [skill.toolName, skill])
-  );
+export function createSkillRegistryController() {
+  const store = new Map<string, Skill>();
 
-  return {
+  const controller: SkillRegistryController = {
     get skills() {
-      return Array.from(registry.values()).sort((a, b) => a.name.localeCompare(b.name));
+      return Array.from(store.values()).sort((a, b) => a.name.localeCompare(b.name));
     },
     get ids() {
-      return Array.from(registry.keys()).sort();
+      return Array.from(store.keys()).sort();
     },
-    has: (key: string) => registry.has(key),
-    get: (key: string) => registry.get(key),
-    add: (key: string, skill: Skill) => {
-      registry.set(key, skill);
+    delete(_key) {
+      store.delete(_key);
+    },
+    clear: () => store.clear(),
+    has: (key) => store.has(key),
+    get: (key) => store.get(key),
+    set: (key, skill) => {
+      store.set(key, skill);
     },
   };
+
+  return controller;
 }
 
 /**
@@ -58,7 +62,7 @@ export function createSkillRegistryController(skills?: Skill[]): SkillRegistryCo
 export async function createSkillRegistry(
   config: PluginConfig,
   logger: PluginLogger
-): Promise<{ controller: SkillRegistryController; debug: SkillRegistryDebugInfo }> {
+): Promise<SkillRegistry> {
   /**
    * Skill Registry Map
    *
@@ -74,86 +78,107 @@ export async function createSkillRegistry(
     discovered: 0,
     parsed: 0,
     rejected: 0,
-    duplicates: 0,
     errors: [],
   };
 
-  // Find all SKILL.md files recursively
-  const basePaths = config.basePaths.filter(doesPathExist);
-  const matches: DiscoveredSkillPath[] = [];
-  for (const basePath of basePaths) {
-    const found = await findSkillPaths(basePath);
-    matches.push(...found);
-  }
-  logger.debug(
-    '[SkillRegistryController] skills.discovered',
-    matches.map((m) => m.absolutePath)
-  );
-
-  debug.discovered = matches.length;
-
-  const dupes: string[] = [];
-
-  for await (const match of matches) {
-    try {
-      const content = await readSkillFile(match.absolutePath);
-      logger.debug('[SkillRegistryController] readSkill', match.absolutePath);
-      const skill = await parseSkill(match, content);
-      logger.debug('[SkillRegistryController] parseSkill', match.absolutePath, skill);
-
-      if (!skill) {
-        debug.rejected++;
-        debug.errors.push(`[NOSKILLERROR] Failed to parse skill at ${match.absolutePath}`);
-        continue;
-      }
-
-      if (controller.has(skill.toolName)) {
-        dupes.push(skill.toolName);
-        debug.rejected++;
-        debug.errors.push(`[DUPESKILL] Duplicate skill name: ${skill.toolName}`);
-        continue;
-      }
-      controller.add(skill.toolName, skill);
-      debug.parsed++;
-    } catch (error) {
-      debug.rejected++;
-      debug.errors.push(
-        error instanceof Error
-          ? error.message
-          : `[UNKNOWNERROR] Unknown error at ${match.absolutePath}`
-      );
-      continue;
+  const initialise = async () => {
+    // Find all SKILL.md files recursively
+    const paths: string[] = [];
+    for (const basePath of config.basePaths.filter(doesPathExist)) {
+      const found = await findSkillPaths(basePath);
+      paths.push(...found);
     }
-  }
+    logger.debug('[SkillRegistryController] skills.discovered', paths);
+    debug.discovered = paths.length;
 
-  logger.debug('errors', JSON.stringify(debug.errors, null, 2));
+    const results = await register(...paths);
 
-  return { controller, debug };
+    debug.parsed = results.parsed;
+    debug.rejected = results.rejected;
+    debug.errors = results.errors;
+  };
+
+  const matchBasePath = (absolutePath: string): string | null => {
+    for (const basePath of config.basePaths) {
+      if (absolutePath.startsWith(basePath)) {
+        return basePath;
+      }
+    }
+    return null;
+  };
+
+  const register = async (...paths: string[]) => {
+    const summary: SkillRegistryDebugInfo = {
+      discovered: paths.length,
+      parsed: 0,
+      rejected: 0,
+      errors: [],
+    };
+
+    for await (const path of paths) {
+      try {
+        const content = await readSkillFile(path);
+        logger.debug('[SkillRegistryController] readSkill', path);
+        const skill = await parseSkill({
+          skillPath: path,
+          basePath: matchBasePath(path) || '',
+          content,
+        });
+        logger.debug('[SkillRegistryController] parseSkill', path, skill);
+
+        if (!skill) {
+          summary.rejected++;
+          summary.errors.push(`[NOSKILLERROR] Failed to parse skill at ${path}`);
+          continue;
+        }
+
+        // Register skill (or overwrite if same path)
+        controller.set(skill.toolName, skill);
+        summary.parsed++;
+      } catch (error) {
+        summary.rejected++;
+        summary.errors.push(
+          error instanceof Error ? error.message : `[UNKNOWNERROR] Unknown error at ${path}`
+        );
+        continue;
+      }
+    }
+    logger.debug('errors', JSON.stringify(summary.errors, null, 2));
+    return summary;
+  };
+
+  const search = createSkillSearcher(controller);
+
+  return { controller, initialise, register, search, debug, logger };
 }
 
 /**
  * Parse a SKILL.md file and return structured skill data
  * Returns null if parsing fails (with error logging)
  */
-async function parseSkill(skillPath: DiscoveredSkillPath, content?: string): Promise<Skill | null> {
-  const relativePath = relative(skillPath.basePath, skillPath.absolutePath);
+async function parseSkill(args: {
+  skillPath: string;
+  basePath: string;
+  content?: string;
+}): Promise<Skill | null> {
+  const relativePath = relative(args.basePath, args.skillPath);
 
   if (!relativePath) {
-    throw new Error(`❌ Skill path does not match expected pattern: ${skillPath.absolutePath}`);
+    throw new Error(`❌ Skill path does not match expected pattern: ${args.skillPath}`);
   }
 
-  if (!content) {
-    throw new Error(`❌ Unable to read skill file: ${skillPath.absolutePath}`);
+  if (!args.content) {
+    throw new Error(`❌ Unable to read skill file: ${args.skillPath}`);
   }
 
   // Parse YAML frontmatter
-  const parsed = matter(content);
+  const parsed = matter(args.content);
 
   // Validate frontmatter schema
   const frontmatter = SkillFrontmatterSchema.safeParse(parsed.data);
   if (!frontmatter.success) {
     throw new Error(
-      `[FrontMatterInvalid] ${skillPath.absolutePath} [${JSON.stringify(frontmatter.error.issues)}]`,
+      `[FrontMatterInvalid] ${args.skillPath} [${JSON.stringify(frontmatter.error.issues)}]`,
       {
         cause: frontmatter.error,
       }
@@ -161,10 +186,10 @@ async function parseSkill(skillPath: DiscoveredSkillPath, content?: string): Pro
   }
 
   // Use directory name as skill name (shortName)
-  const shortName = basename(dirname(skillPath.absolutePath));
+  const shortName = basename(dirname(args.skillPath));
 
   // Generate tool name from path
-  const skillFullPath = dirname(skillPath.absolutePath);
+  const skillFullPath = dirname(args.skillPath);
 
   const scriptPaths = listSkillFiles(skillFullPath, 'scripts');
   const referencePaths = listSkillFiles(skillFullPath, 'references');
@@ -179,7 +204,7 @@ async function parseSkill(skillPath: DiscoveredSkillPath, content?: string): Pro
     license: frontmatter.data.license,
     metadata: frontmatter.data.metadata,
     name: shortName,
-    path: skillPath.absolutePath,
+    path: args.skillPath,
     scripts: createSkillResourceMap(skillFullPath, scriptPaths),
     references: createSkillResourceMap(skillFullPath, referencePaths),
     assets: createSkillResourceMap(skillFullPath, assetPaths),

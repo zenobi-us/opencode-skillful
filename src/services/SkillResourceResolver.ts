@@ -1,4 +1,4 @@
-import type { Skill, SkillProvider } from '../types';
+import type { Skill, SkillRegistry } from '../types';
 
 import { readSkillFile } from './SkillFs';
 
@@ -11,7 +11,7 @@ import { readSkillFile } from './SkillFs';
  * - ensure the requested path isn't outside the skill directory (security).
  * - return the content and mime type of the resource.
  */
-export function createSkillResourceResolver(provider: SkillProvider) {
+export function createSkillResourceResolver(provider: SkillRegistry) {
   const resolveResourceMap = (skill: Skill, type: 'script' | 'asset' | 'reference') => {
     if (type === 'script') {
       return skill.scripts;
@@ -34,7 +34,7 @@ export function createSkillResourceResolver(provider: SkillProvider) {
     mimeType: string;
   }> => {
     // Try to find skill by toolName first, then by name (backward compat)
-    const skill = provider.registry.get(args.skill_name);
+    const skill = provider.controller.get(args.skill_name);
     if (!skill) {
       throw new Error(`Skill not found: ${args.skill_name}`);
     }

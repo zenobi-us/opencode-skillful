@@ -1,8 +1,8 @@
 import * as Bun from 'bun';
 import { createSkillResourceResolver } from './SkillResourceResolver';
-import { SkillProvider } from '../types';
+import { SkillRegistry } from '../types';
 
-export function createScriptResourceExecutor(provider: SkillProvider) {
+export function createScriptResourceExecutor(provider: SkillRegistry) {
   const skillResourceResolver = createSkillResourceResolver(provider);
 
   return async function (args: { skill_name: string; relative_path: string; args?: string[] }) {

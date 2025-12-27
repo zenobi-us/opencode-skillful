@@ -1,8 +1,7 @@
-import { type PluginInput } from '@opencode-ai/plugin';
-import type { Skill, SkillProvider } from '../types';
+import type { Skill, SkillRegistry } from '../types';
 
-export function createSkillLoader(ctx: PluginInput, provider: SkillProvider) {
-  const registry = provider.registry;
+export function createSkillLoader(provider: SkillRegistry) {
+  const registry = provider.controller;
 
   function renderResources(skill: Skill) {
     const resources = [

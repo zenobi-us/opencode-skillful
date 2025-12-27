@@ -21,13 +21,12 @@ export const listSkillFiles = (skillPath: string, subdirectory: string): string[
   return Array.from(glob.scanSync({ cwd: skillPath, absolute: true }));
 };
 
-export const findSkillPaths = async (basePath: string): Promise<DiscoveredSkillPath[]> => {
-  const results: DiscoveredSkillPath[] = [];
+export const findSkillPaths = async (basePath: string): Promise<string[]> => {
   const glob = new Bun.Glob('**/SKILL.md');
-  for await (const match of glob.scan({ cwd: basePath })) {
-    results.push(createDiscoveredSkillPath(basePath, match));
+  const results: string[] = [];
+  for await (const path of glob.scan({ cwd: basePath })) {
+    results.push(path);
   }
-
   return results;
 };
 
@@ -80,18 +79,3 @@ export const detectMimeType = (filePath: string): string => {
 
   return mimeTypes[ext] || 'application/octet-stream';
 };
-
-export function createDiscoveredSkillPath(
-  basePath: string,
-  relativeSkillPath: string
-): DiscoveredSkillPath {
-  return {
-    basePath,
-    absolutePath: join(basePath, relativeSkillPath),
-  };
-}
-
-export interface DiscoveredSkillPath {
-  basePath: string;
-  absolutePath: string;
-}

@@ -1,12 +1,5 @@
-import type {
-  Skill,
-  SkillProvider,
-  SkillRegistryController,
-  SkillRegistryDebugInfo,
-  SkillSearchResult,
-} from './types';
-import { createSkillProvider } from './services/SkillProvider';
-import { createSkillRegistryController } from './services/SkillRegistry';
+import type { Skill, SkillRegistry, SkillRegistryController, SkillSearchResult } from './types';
+import { createSkillRegistry, createSkillRegistryController } from './services/SkillRegistry';
 import { createLogger } from './services/logger';
 
 /**
@@ -35,7 +28,11 @@ export function createMockSkill(overrides: Partial<Skill> = {}): Skill {
  * @returns A mock registry controller
  */
 export function createMockRegistryController(skills: Skill[] = []): SkillRegistryController {
-  return createSkillRegistryController(skills);
+  const controller = createSkillRegistryController();
+  for (const skill of skills) {
+    controller.set(skill.toolName, skill);
+  }
+  return controller;
 }
 
 /**
@@ -43,17 +40,17 @@ export function createMockRegistryController(skills: Skill[] = []): SkillRegistr
  * @param skills Array of skills to include in the provider
  * @returns A mock skill provider
  */
-export function createMockProvider(skills: Skill[] = []): SkillProvider {
-  const controller = createMockRegistryController(skills);
+export async function createMockRegistry(skills: Skill[] = []): Promise<SkillRegistry> {
   const config = createMockConfig();
-  const debug = createMockDebug();
   const logger = createLogger(config);
-  return createSkillProvider({
-    config,
-    controller,
-    debug,
-    logger,
-  });
+
+  const registry = await createSkillRegistry(config, logger);
+
+  for (const skill of skills) {
+    registry.controller.set(skill.toolName, skill);
+  }
+
+  return registry;
 }
 
 /**
@@ -95,16 +92,6 @@ export function mockFullSearchResult(
     feedback: skills.length > 0 ? `Found ${skills.length} matches` : 'No results found',
     ...overrides,
   });
-}
-
-function createMockDebug(): SkillRegistryDebugInfo {
-  return {
-    parsed: 0,
-    discovered: 0,
-    duplicates: 0,
-    errors: [],
-    rejected: 0,
-  };
 }
 
 function createMockConfig() {

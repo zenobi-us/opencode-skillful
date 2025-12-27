@@ -28,9 +28,11 @@ import { tool, ToolContext, type Plugin } from '@opencode-ai/plugin';
 
 import { createInstructionInjector } from './services/OpenCodeChat';
 import { createApi } from './api';
+import { getPluginConfig } from './config';
 
 export const SkillsPlugin: Plugin = async (ctx) => {
-  const api = await createApi(ctx);
+  const config = await getPluginConfig(ctx);
+  const api = await createApi(config);
   const sendPrompt = createInstructionInjector(ctx);
 
   return {

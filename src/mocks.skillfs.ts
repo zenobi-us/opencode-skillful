@@ -1,6 +1,5 @@
 import { mock } from 'bun:test';
 import { Volume } from 'memfs';
-import { createDiscoveredSkillPath, DiscoveredSkillPath } from './services/SkillFs';
 import path from 'node:path';
 
 mock.module('./services/SkillFs.ts', async () => {
@@ -37,19 +36,14 @@ This is a test skill.
      * @param basePath Base directory to search
      * @returns Array of discovered skill paths
      *
-     * @see {@link DiscoveredSkillPath}
      * @see {@link createDiscoveredSkillPath}
      * @see {@link SkillFs}
      */
     findSkillPaths: async (basePath: string) => {
       console.log(`[MOCK] skillfs.findSkillPaths`, basePath);
-      const results: DiscoveredSkillPath[] = [];
-      const globResult = await memdisk.promises.glob('**/SKILL.md', {
+      const results = await memdisk.promises.glob('**/SKILL.md', {
         cwd: basePath,
       });
-      for (const relativePath of globResult) {
-        results.push(createDiscoveredSkillPath(basePath, relativePath));
-      }
       console.log(`[MOCK] skillfs.findSkillPaths results:`, results);
       return results;
     },

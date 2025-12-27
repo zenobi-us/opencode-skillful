@@ -97,11 +97,6 @@ export type LogType = 'log' | 'debug' | 'error' | 'warn';
 export type PluginLogger = Record<LogType, (...message: unknown[]) => void>;
 
 /**
- * Skill registry map type
- */
-export type SkillRegistry = Map<string, Skill>;
-
-/**
  * Skill searcher function type
  */
 export type SkillSearcher = (_query: string | string[]) => SkillSearchResult;
@@ -112,9 +107,11 @@ export type SkillSearcher = (_query: string | string[]) => SkillSearchResult;
 export type SkillRegistryController = {
   skills: Skill[];
   ids: string[];
+  clear: () => void;
+  delete: (_key: string) => void;
   has: (_key: string) => boolean;
   get: (_key: string) => Skill | undefined;
-  add: (_key: string, _skill: Skill) => void;
+  set: (_key: string, _skill: Skill) => void;
 };
 
 export type SkillRegistryDebugInfo = {
@@ -122,12 +119,13 @@ export type SkillRegistryDebugInfo = {
   parsed: number;
   rejected: number;
   errors: string[];
-  duplicates: number;
 };
 
-export type SkillProvider = {
-  registry: SkillRegistryController;
-  searcher: SkillSearcher;
+export type SkillRegistry = {
+  initialise: () => Promise<void>;
+  register: (...skillPaths: string[]) => Promise<SkillRegistryDebugInfo>;
+  controller: SkillRegistryController;
+  search: SkillSearcher;
   debug?: SkillRegistryDebugInfo;
   logger: PluginLogger;
 };

@@ -1,8 +1,8 @@
 import { test, describe } from 'bun:test';
 import { expect } from 'bun:test';
 import { createSkillResourceResolver } from './SkillResourceResolver';
-import { createSkillProvider } from './SkillProvider';
 import { createSkillRegistry } from './SkillRegistry';
+
 /**
  * Unit tests for SkillResourceResolver service
  * Tests resource path resolution and file loading with memfs
@@ -11,14 +11,8 @@ import { createSkillRegistry } from './SkillRegistry';
 describe('SkillResourceResolver', () => {
   async function createMockResolver() {
     const config = { basePaths: ['/skills', '/place/that/doesnt/exist'], debug: false };
-    const controller = await createSkillRegistry(config, console);
-    const provider = createSkillProvider({
-      controller: controller.controller,
-      debug: controller.debug,
-      logger: console,
-      config,
-    });
-    return createSkillResourceResolver(provider);
+    const registry = await createSkillRegistry(config, console);
+    return createSkillResourceResolver(registry);
   }
 
   describe('resolveSkillResource', () => {

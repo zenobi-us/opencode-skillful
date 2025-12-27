@@ -1,12 +1,12 @@
 import { test, describe, expect } from 'bun:test';
-import { createMockProvider, createMockSkill } from '../mocks';
+import { createMockRegistry, createMockSkill } from '../mocks';
 import { createScriptResourceExecutor } from './ScriptResourceExecutor';
-import type { SkillProvider } from '../types';
+import type { SkillRegistry } from '../types';
 
 describe('ScriptResourceExecutor', () => {
   describe('Basic Script Execution', () => {
-    test('should be a callable function', () => {
-      const mockProvider: SkillProvider = createMockProvider([
+    test('should be a callable function', async () => {
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([
@@ -18,8 +18,8 @@ describe('ScriptResourceExecutor', () => {
       expect(typeof executor).toBe('function');
     });
 
-    test('should accept args object with skill_name and relative_path', () => {
-      const mockProvider: SkillProvider = createMockProvider([
+    test('should accept args object with skill_name and relative_path', async () => {
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([
@@ -34,7 +34,7 @@ describe('ScriptResourceExecutor', () => {
 
   describe('Error Handling', () => {
     test('should throw when script file does not exist', async () => {
-      const mockProvider: SkillProvider = createMockProvider([
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([
@@ -56,7 +56,7 @@ describe('ScriptResourceExecutor', () => {
     });
 
     test('should throw when skill is not found in registry', async () => {
-      const mockProvider: SkillProvider = createMockProvider([
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([
@@ -80,7 +80,7 @@ describe('ScriptResourceExecutor', () => {
 
   describe('Script Arguments - Safety', () => {
     test('should safely pass arguments without shell interpretation', async () => {
-      const mockProvider: SkillProvider = createMockProvider([
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([
@@ -105,7 +105,7 @@ describe('ScriptResourceExecutor', () => {
     });
 
     test('should handle arguments with spaces correctly', async () => {
-      const mockProvider: SkillProvider = createMockProvider([
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([
@@ -127,7 +127,7 @@ describe('ScriptResourceExecutor', () => {
     });
 
     test('should execute script without arguments when args array is empty', async () => {
-      const mockProvider: SkillProvider = createMockProvider([
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([
@@ -149,7 +149,7 @@ describe('ScriptResourceExecutor', () => {
     });
 
     test('should execute script without arguments when args is undefined', async () => {
-      const mockProvider: SkillProvider = createMockProvider([
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([
@@ -170,7 +170,7 @@ describe('ScriptResourceExecutor', () => {
     });
 
     test('should pass multiple arguments in correct order', async () => {
-      const mockProvider: SkillProvider = createMockProvider([
+      const mockProvider: SkillRegistry = await createMockRegistry([
         createMockSkill({
           name: 'test_skill',
           scripts: new Map([

@@ -7,11 +7,10 @@
  * - Returns execution results (stdout, stderr, exit code)
  */
 
-import { PluginInput } from '@opencode-ai/plugin';
-import { SkillProvider } from '../types';
+import { SkillRegistry } from '../types';
 import { createScriptResourceExecutor } from '../services/ScriptResourceExecutor';
 
-export function createSkillExecutor(ctx: PluginInput, provider: SkillProvider) {
+export function createSkillExecutor(provider: SkillRegistry) {
   const scriptResourceExecutor = createScriptResourceExecutor(provider);
 
   return async (args: { skill_name: string; relative_path: string; args?: string[] }) => {

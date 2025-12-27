@@ -1,12 +1,11 @@
-import type { PluginInput } from '@opencode-ai/plugin';
-import type { SkillProvider } from '../types';
+import type { SkillRegistry } from '../types';
 
 /**
  * Creates a tool function that searches for skills
  */
-export function createSkillFinder(_ctx: PluginInput, provider: SkillProvider) {
+export function createSkillFinder(provider: SkillRegistry) {
   return async (args: { query: string | string[] }) => {
-    const result = provider.searcher(args.query);
+    const result = provider.search(args.query);
 
     const results = result.matches
       .map(
@@ -21,7 +20,6 @@ export function createSkillFinder(_ctx: PluginInput, provider: SkillProvider) {
     <Discovered>${provider.debug.discovered}</Discovered>
     <Parsed>${provider.debug.parsed}</Parsed>
     <Rejected>${provider.debug.rejected}</Rejected>
-    <Duplicates>${provider.debug.duplicates}</Duplicates>
     <Errors>
       ${provider.debug.errors.map((e) => `<Error>${e}</Error>`).join('\n')}
     </Errors>
@@ -33,7 +31,7 @@ export function createSkillFinder(_ctx: PluginInput, provider: SkillProvider) {
     ${results}
   </Skills>
   <Summary>
-    <Total>${provider.registry.skills.length}</Total>
+    <Total>${provider.controller.skills.length}</Total>
     <Matches>${result.totalMatches}</Matches>
     <Feedback>${result.feedback}</Feedback>
     ${debugInfo}
