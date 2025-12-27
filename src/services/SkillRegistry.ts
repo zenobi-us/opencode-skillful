@@ -11,14 +11,14 @@ import {
 
 import { dirname, basename, relative } from 'node:path';
 import matter from 'gray-matter';
-import { toolName } from './identifiers';
+import { toolName } from '../lib/Identifiers';
 import {
   doesPathExist,
   findSkillPaths,
   listSkillFiles,
   readSkillFile,
   detectMimeType,
-} from './SkillFs';
+} from '../lib/SkillFs';
 import { createSkillSearcher } from './SkillSearcher';
 
 // Validation Schema
@@ -108,6 +108,7 @@ export async function createSkillRegistry(
   };
 
   const register = async (...paths: string[]) => {
+    logger.debug(`[SkillRegistryController] register [${paths.length}] skills`);
     const summary: SkillRegistryDebugInfo = {
       discovered: paths.length,
       parsed: 0,
@@ -117,23 +118,26 @@ export async function createSkillRegistry(
 
     for await (const path of paths) {
       try {
-        const content = await readSkillFile(path);
         logger.debug('[SkillRegistryController] readSkill', path);
+        const content = await readSkillFile(path);
+
+        logger.debug('[SkillRegistryController] parseSkill', path);
         const skill = await parseSkill({
           skillPath: path,
           basePath: matchBasePath(path) || '',
           content,
         });
-        logger.debug('[SkillRegistryController] parseSkill', path, skill);
 
         if (!skill) {
           summary.rejected++;
           summary.errors.push(`[NOSKILLERROR] Failed to parse skill at ${path}`);
+          logger.debug('[SkillRegistryController] error [NOSKILLERROR]', path, '=> NO SKILL');
           continue;
         }
 
         // Register skill (or overwrite if same path)
         controller.set(skill.toolName, skill);
+        logger.debug('[SkillRegistryController] registered skill', skill.toolName, 'at', path);
         summary.parsed++;
       } catch (error) {
         summary.rejected++;

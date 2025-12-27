@@ -1,6 +1,6 @@
 import type { Skill, SkillRegistry } from '../types';
 
-import { readSkillFile } from './SkillFs';
+import { readSkillFile } from '../lib/SkillFs';
 
 /**
  * Skill resources are mapped on startup as a dictionary of relative paths to resource metadata.

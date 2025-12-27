@@ -26,9 +26,10 @@
 
 import { tool, ToolContext, type Plugin } from '@opencode-ai/plugin';
 
-import { createInstructionInjector } from './services/OpenCodeChat';
+import { createInstructionInjector } from './lib/OpenCodeChat';
 import { createApi } from './api';
 import { getPluginConfig } from './config';
+import { jsonToXml } from './lib/xml';
 
 export const SkillsPlugin: Plugin = async (ctx) => {
   const config = await getPluginConfig(ctx);
@@ -40,12 +41,23 @@ export const SkillsPlugin: Plugin = async (ctx) => {
       skill_use: tool({
         description:
           'Load one or more skills into the chat. Provide an array of skill names to load them as user messages.',
-        args: {},
+        args: {
+          skill_names: tool.schema
+            .array(tool.schema.string())
+            .describe('An array of skill names to load.'),
+        },
         execute: async (args, toolCtx: ToolContext) => {
-          const results = await api.loadSkill(args.skill_names, async (content: string) => {
-            sendPrompt(content, { sessionId: toolCtx.sessionID });
+          const results = args.skill_names
+            .map((name) => api.registry.controller.get(name))
+            .filter((skill) => skill !== undefined);
+
+          for await (const skill of results) {
+            await sendPrompt(jsonToXml(skill, 'Skill'), { sessionId: toolCtx.sessionID });
+          }
+
+          return JSON.stringify({
+            loaded: results.map((skill) => skill!.toolName),
           });
-          return results;
         },
       }),
 
@@ -57,7 +69,7 @@ export const SkillsPlugin: Plugin = async (ctx) => {
             .describe('The search query string or array of strings.'),
         },
         execute: async (args) => {
-          return api.findSkills(args);
+          return jsonToXml(api.findSkills(args), 'SkillSearchResults');
         },
       }),
 
@@ -71,22 +83,17 @@ export const SkillsPlugin: Plugin = async (ctx) => {
         },
         execute: async (args, toolCtx: ToolContext) => {
           const result = await api.readResource(args);
-          await sendPrompt(result.injection, { sessionId: toolCtx.sessionID });
-          return result.summary;
-        },
-      }),
+          if (!result.injection) {
+            throw new Error('Failed to read resource');
+          }
 
-      skill_exec: tool({
-        description: 'Execute scripts from skill resources with arguments',
-        args: {
-          skill_name: tool.schema.string(),
-          relative_path: tool.schema.string(),
-          args: tool.schema.array(tool.schema.string()).optional(),
-        },
-        execute: async (args, toolCtx: ToolContext) => {
-          const result = await api.runScript(args);
-          await sendPrompt(result.injection, { sessionId: toolCtx.sessionID });
-          return result.summary;
+          await sendPrompt(jsonToXml(result.injection), { sessionId: toolCtx.sessionID });
+
+          return JSON.stringify({
+            result: 'Resource injected successfully',
+            resource_path: result.injection.resource_path,
+            resource_mimetype: result.injection.resource_mimetype,
+          });
         },
       }),
     },

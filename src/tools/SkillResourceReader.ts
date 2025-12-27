@@ -12,15 +12,16 @@ export function createSkillResourceReader(provider: SkillRegistry) {
     });
 
     // Inject content silently
-    const injection = `<Resource skill="${args.skill_name}" path="${args.relative_path}" type="${resource.mimeType}">${resource.content}</Resource>`;
-    const summary = `
-Load Skill Resource
 
-  skill: ${args.skill_name}
-  resource: ${args.relative_path}
-  type: ${resource.mimeType}
-    `;
+    const injection = {
+      skill_name: args.skill_name,
+      resource_path: args.relative_path,
+      resource_mimetype: resource.mimeType,
+      content: resource.content,
+    };
 
-    return { injection, summary };
+    return {
+      injection,
+    };
   };
 }

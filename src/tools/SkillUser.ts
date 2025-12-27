@@ -1,36 +1,8 @@
-import type { Skill, SkillRegistry } from '../types';
+import { jsonToXml } from '../lib/xml';
+import type { SkillRegistry } from '../types';
 
 export function createSkillLoader(provider: SkillRegistry) {
   const registry = provider.controller;
-
-  function renderResources(skill: Skill) {
-    const resources = [
-      ...Array.from(skill.references || []),
-      ...Array.from(skill.assets || []),
-      ...Array.from(skill.scripts || []),
-    ]
-      .map(
-        ([relativePath, resourceData]) =>
-          `<SkillResource relative-path="${relativePath}" absolute-path="${resourceData.absolutePath}" mime-type="${resourceData.mimeType}"/>`
-      )
-      .join('\n');
-    return resources;
-  }
-  /**
-   * Load a single skill into the chat
-   */
-  function render(skill: Skill) {
-    const resources = renderResources(skill);
-    const content = `
-<Skill>
-  <SkillName>${skill.name}</SkillName>
-  <SkillDescription>${skill.description}</SkillDescription>
-  ${resources && `<SkillResources>${resources}</SkillResources>`}
-  <SkillContent>${skill.content}</SkillContent>
-</Skill>
-`;
-    return content;
-  }
 
   /**
    * Load multiple skills into the chat
@@ -49,7 +21,7 @@ export function createSkillLoader(provider: SkillRegistry) {
         continue;
       }
 
-      await onLoad(render(skill));
+      await onLoad(jsonToXml(skill, 'Skill'));
       loaded.push(skill.toolName);
     }
 

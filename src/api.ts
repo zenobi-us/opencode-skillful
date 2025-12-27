@@ -2,7 +2,6 @@ import { createLogger } from './services/logger';
 import { createSkillRegistry } from './services/SkillRegistry';
 import { createSkillFinder } from './tools/SkillFinder';
 import { createSkillResourceReader } from './tools/SkillResourceReader';
-import { createSkillExecutor } from './tools/SkillScriptExec';
 import { createSkillLoader } from './tools/SkillUser';
 import { PluginConfig } from './types';
 
@@ -15,6 +14,5 @@ export const createApi = async (config: PluginConfig) => {
     findSkills: createSkillFinder(registry),
     readResource: createSkillResourceReader(registry),
     loadSkill: createSkillLoader(registry),
-    runScript: createSkillExecutor(registry),
   };
 };

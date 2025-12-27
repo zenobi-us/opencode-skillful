@@ -88,19 +88,23 @@ export function generateFeedback(query: ParsedSkillQuery, matchCount: number): s
   const parts: string[] = [];
 
   if (query.include.length > 0) {
-    parts.push(`📝 Searching for: "${query.include.join(', ')}**`);
+    parts.push(`Searched for: "${query.include.join(', ')}**`);
+  } else {
+    parts.push(`No include search terms provided`);
   }
 
   if (query.hasExclusions) {
-    parts.push(`🚫 Excluding: **${query.exclude.join(', ')}**`);
+    parts.push(`Excluding: **${query.exclude.join(', ')}**`);
   }
 
   if (matchCount === 0) {
-    parts.push(`❌ No matches found`);
+    parts.push(`No matches found`);
+    parts.push(`- Try different or fewer search terms.`);
+    parts.push(`- Use skill_find("*") to list all skills.`);
   } else if (matchCount === 1) {
-    parts.push(`✅ Found 1 match`);
+    parts.push(`Found 1 match`);
   } else {
-    parts.push(`✅ Found ${matchCount} matches`);
+    parts.push(`Found ${matchCount} matches`);
   }
 
   return parts.join(' | ');
@@ -133,12 +137,10 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
     if (queryString === '' || queryString === '*') {
       output.matches = skills;
       output.totalMatches = skills.length;
-      output.feedback = `✅ Listing all ${skills.length} skills`;
       return output;
     }
 
     if (query.include.length === 0) {
-      output.feedback = `❌ No valid search terms provided in query "${queryString}"`;
       return output;
     }
 
@@ -149,7 +151,7 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
 
     output.matches = results;
     output.totalMatches = results.length;
-    output.feedback = `✅ Found ${results.length} matches for query "${queryString}"`;
+    output.feedback = generateFeedback(query, results.length);
 
     return output;
   }
@@ -159,8 +161,6 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
    */
   return function search(queryString: string | string[]): SkillSearchResult {
     const resolved = resolveQuery(queryString);
-    const feedback = resolved.feedback;
-    const query = resolved.query;
 
     const results = resolved.matches.filter((skill) =>
       shouldIncludeSkill(skill, resolved.query.exclude)
@@ -169,7 +169,7 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
     const totalMatches = results.length;
 
     const ranked: SkillRank[] = results
-      .map((skill) => rankSkill(skill, query.include))
+      .map((skill) => rankSkill(skill, resolved.query.include))
       .sort((a, b) => {
         if (b.totalScore !== a.totalScore) {
           return b.totalScore - a.totalScore;
@@ -185,8 +185,8 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
     return {
       matches,
       totalMatches,
-      feedback,
-      query,
+      feedback: resolved.feedback,
+      query: resolved.query,
       totalSkills: registry.skills.length,
     };
   };

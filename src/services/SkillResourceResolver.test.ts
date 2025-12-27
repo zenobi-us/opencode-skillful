@@ -12,6 +12,7 @@ describe('SkillResourceResolver', () => {
   async function createMockResolver() {
     const config = { basePaths: ['/skills', '/place/that/doesnt/exist'], debug: false };
     const registry = await createSkillRegistry(config, console);
+    await registry.initialise();
     return createSkillResourceResolver(registry);
   }
 

@@ -1,6 +1,6 @@
 import { test, describe, expect } from 'bun:test';
 import { sep } from 'path';
-import { toolName, normalizePathQuery, stripSkillsPrefix } from './identifiers.ts';
+import { toolName, normalizePathQuery, stripSkillsPrefix } from './Identifiers.ts';
 
 describe('identifiers.ts', () => {
   describe('toolName()', () => {
