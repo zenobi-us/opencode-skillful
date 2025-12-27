@@ -24,52 +24,69 @@
  * @see https://github.com/anthropics/skills
  */
 
-import { join } from 'path';
+import { tool, ToolContext, type Plugin } from '@opencode-ai/plugin';
 
-import type { Plugin, PluginInput } from '@opencode-ai/plugin';
-import envPaths from 'env-paths';
-import { mergeDeepLeft } from 'ramda';
-
-import type { PluginConfig } from './types';
-import { createToolResourceReader } from './tools/SkillResourceReader';
-import { createUseSkillsTool } from './tools/SkillUser';
-import { createFindSkillsTool } from './tools/SkillFinder';
-import { createSkillScriptExecTool } from './tools/SkillScriptExec';
-import { createSkillProvider } from './services/SkillProvider';
-import { createSkillRegistry } from './services/SkillRegistry';
-import { createLogger } from './services/logger';
-
-const OpenCodePaths = envPaths('opencode', { suffix: '' });
-
-async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
-  const base = {
-    debug: false,
-    basePaths: [
-      join(OpenCodePaths.config, 'skills'), // Lowest priority: Standard User Config (windows)
-      join(ctx.directory, '.opencode', 'skills'), // Highest priority: Project-local
-    ],
-  };
-
-  return mergeDeepLeft({}, base);
-}
+import { createInstructionInjector } from './services/OpenCodeChat';
+import { createApi } from './api';
 
 export const SkillsPlugin: Plugin = async (ctx) => {
-  const config = await getPluginConfig(ctx);
-  const logger = createLogger(config);
-  const registry = await createSkillRegistry(config, logger);
-
-  const provider = createSkillProvider({
-    config,
-    logger,
-    ...registry,
-  });
+  const api = await createApi(ctx);
+  const sendPrompt = createInstructionInjector(ctx);
 
   return {
     tool: {
-      skill_use: createUseSkillsTool(ctx, provider),
-      skill_find: createFindSkillsTool(ctx, provider),
-      skill_resource: createToolResourceReader(ctx, provider),
-      skill_exec: createSkillScriptExecTool(ctx, provider),
+      skill_use: tool({
+        description:
+          'Load one or more skills into the chat. Provide an array of skill names to load them as user messages.',
+        args: {},
+        execute: async (args, toolCtx: ToolContext) => {
+          const results = await api.loadSkill(args.skill_names, async (content: string) => {
+            sendPrompt(content, { sessionId: toolCtx.sessionID });
+          });
+          return results;
+        },
+      }),
+
+      skill_find: tool({
+        description: `Search for skills using natural query syntax`,
+        args: {
+          query: tool.schema
+            .union([tool.schema.string(), tool.schema.array(tool.schema.string())])
+            .describe('The search query string or array of strings.'),
+        },
+        execute: async (args) => {
+          return api.findSkills(args);
+        },
+      }),
+
+      skill_resource: tool({
+        description: `Read a resource file from a skill.`,
+        args: {
+          skill_name: tool.schema.string().describe('The skill id to read the resource from.'),
+          relative_path: tool.schema
+            .string()
+            .describe('The relative path to the resource file within the skill directory.'),
+        },
+        execute: async (args, toolCtx: ToolContext) => {
+          const result = await api.readResource(args);
+          await sendPrompt(result.injection, { sessionId: toolCtx.sessionID });
+          return result.summary;
+        },
+      }),
+
+      skill_exec: tool({
+        description: 'Execute scripts from skill resources with arguments',
+        args: {
+          skill_name: tool.schema.string(),
+          relative_path: tool.schema.string(),
+          args: tool.schema.array(tool.schema.string()).optional(),
+        },
+        execute: async (args, toolCtx: ToolContext) => {
+          const result = await api.runScript(args);
+          await sendPrompt(result.injection, { sessionId: toolCtx.sessionID });
+          return result.summary;
+        },
+      }),
     },
   };
 };

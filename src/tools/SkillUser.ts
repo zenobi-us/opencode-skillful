@@ -1,34 +1,9 @@
-import { type PluginInput, type ToolDefinition, tool, type ToolContext } from '@opencode-ai/plugin';
-import type { Skill, SkillProvider, SkillRegistryController } from '../types';
-import { createInstructionInjector } from '../services/OpenCodeChat';
+import { type PluginInput } from '@opencode-ai/plugin';
+import type { Skill, SkillProvider } from '../types';
 
-/**
- * Tool to use (load) one or more skills
- */
+export function createSkillLoader(ctx: PluginInput, provider: SkillProvider) {
+  const registry = provider.registry;
 
-export function createUseSkillsTool(ctx: PluginInput, provider: SkillProvider): ToolDefinition {
-  const skillLoader = createSkillLoader(provider.registry);
-  const sendPrompt = createInstructionInjector(ctx);
-
-  return tool({
-    description:
-      'Load one or more skills into the chat. Provide an array of skill names to load them as user messages.',
-    args: {
-      skill_names: tool.schema
-        .array(tool.schema.string())
-        .min(1, 'Must provide at least one skill name'),
-    },
-    execute: async (args, toolCtx: ToolContext) => {
-      const results = await skillLoader(args.skill_names, async (content: string) => {
-        sendPrompt(content, { sessionId: toolCtx.sessionID });
-      });
-
-      return results;
-    },
-  });
-}
-
-function createSkillLoader(registry: SkillRegistryController) {
   function renderResources(skill: Skill) {
     const resources = [
       ...Array.from(skill.references || []),

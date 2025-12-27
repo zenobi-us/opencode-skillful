@@ -24,7 +24,8 @@
     "gray-matter": "^4.0.3",
     "mime": "^4.1.0",
     "ramda": "^0.30.0",
-    "search-string": "^3.1.0"
+    "search-string": "^3.1.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
