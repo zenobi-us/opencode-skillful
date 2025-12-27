@@ -1,5 +1,4 @@
-import { jsonToXml } from '../lib/xml';
-import type { SkillRegistry } from '../types';
+import type { Skill, SkillRegistry } from '../types';
 
 export function createSkillLoader(provider: SkillRegistry) {
   const registry = provider.controller;
@@ -7,27 +6,25 @@ export function createSkillLoader(provider: SkillRegistry) {
   /**
    * Load multiple skills into the chat
    */
-  async function loadSkills(skillNames: string[], onLoad: (content: string) => Promise<void>) {
+  async function loadSkills(skillNames: string[]) {
     await provider.controller.ready.promise;
 
-    const loaded: string[] = [];
+    const loaded: Skill[] = [];
     const notFound: string[] = [];
 
-    for (const skillName of skillNames) {
-      // Try to find skill by toolName first (primary key), then by name (backward compat)
-
-      const skill = registry.get(skillName);
-
-      if (!skill) {
-        notFound.push(skillName);
-        continue;
+    for (const name of skillNames) {
+      const skill = registry.get(name);
+      if (skill) {
+        loaded.push(skill);
+      } else {
+        notFound.push(name);
       }
-
-      await onLoad(jsonToXml(skill, 'Skill'));
-      loaded.push(skill.toolName);
     }
 
-    return JSON.stringify({ loaded, notFound });
+    return {
+      loaded,
+      notFound,
+    };
   }
 
   return loadSkills;

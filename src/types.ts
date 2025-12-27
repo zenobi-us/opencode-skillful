@@ -124,6 +124,7 @@ export type SkillRegistryDebugInfo = {
 
 export type SkillRegistry = {
   initialise: () => Promise<void>;
+  config: PluginConfig;
   register: (...skillPaths: string[]) => Promise<SkillRegistryDebugInfo>;
   controller: SkillRegistryController;
   search: SkillSearcher;

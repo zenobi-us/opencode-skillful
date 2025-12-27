@@ -8,7 +8,7 @@ export const OpenCodePaths = envPaths('opencode', { suffix: '' });
 
 export async function getPluginConfig(ctx: PluginInput): Promise<PluginConfig> {
   const base = {
-    debug: false,
+    debug: true,
     basePaths: [
       join(OpenCodePaths.config, 'skills'), // Lowest priority: Standard User Config (windows)
       join(ctx.directory, '.opencode', 'skills'), // Highest priority: Project-local

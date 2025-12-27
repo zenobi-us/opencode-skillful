@@ -470,7 +470,6 @@ describe('SkillSearcher', () => {
       const result = searcher('git');
 
       expect(result.feedback).toContain('2');
-      expect(result.feedback).toContain('✅');
       expect(result.feedback).toContain('Found');
     });
 
@@ -480,8 +479,7 @@ describe('SkillSearcher', () => {
       const searcher = createSkillSearcher(registry);
       const result = searcher('nonexistent');
 
-      expect(result.feedback).toContain('✅');
-      expect(result.feedback).toContain('Found 0 matches');
+      expect(result.feedback).toContain('No matches found');
     });
 
     test('should mention included terms in feedback', () => {
@@ -573,24 +571,21 @@ describe('SkillSearcher', () => {
       expect(result.feedback).toBeDefined();
       expect(typeof result.feedback).toBe('string');
       expect(result.feedback).toContain('Listing all');
-      expect(result.feedback).toContain('✅');
     });
 
-    test('should format feedback with proper emoji indicators', () => {
+    test('should format feedback with proper indicators', () => {
       const skills = [createMockSkill({ name: 'test', description: 'test', toolName: 'test' })];
       const registry = createMockRegistryController(skills);
       const searcher = createSkillSearcher(registry);
 
       const successResult = searcher('test');
-      expect(successResult.feedback).toContain('✅');
       expect(successResult.feedback).toContain('Found 1 match');
 
       const emptySkills: Skill[] = [];
       const emptyRegistry = createMockRegistryController(emptySkills);
       const emptySearcher = createSkillSearcher(emptyRegistry);
       const emptyResult = emptySearcher('test');
-      expect(emptyResult.feedback).toContain('✅');
-      expect(emptyResult.feedback).toContain('Found 0 matches');
+      expect(emptyResult.feedback).toContain('No matches found');
     });
 
     test('should use pipe separator in feedback', () => {

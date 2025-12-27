@@ -36,6 +36,8 @@ export const SkillsPlugin: Plugin = async (ctx) => {
   const api = await createApi(config);
   const sendPrompt = createInstructionInjector(ctx);
 
+  api.registry.initialise();
+
   return {
     tool: {
       skill_use: tool({
@@ -47,16 +49,14 @@ export const SkillsPlugin: Plugin = async (ctx) => {
             .describe('An array of skill names to load.'),
         },
         execute: async (args, toolCtx: ToolContext) => {
-          const results = args.skill_names
-            .map((name) => api.registry.controller.get(name))
-            .filter((skill) => skill !== undefined);
-
-          for await (const skill of results) {
+          const results = await api.loadSkill(args.skill_names);
+          for await (const skill of results.loaded) {
             await sendPrompt(jsonToXml(skill, 'Skill'), { sessionId: toolCtx.sessionID });
           }
 
           return JSON.stringify({
-            loaded: results.map((skill) => skill!.toolName),
+            loaded: results.loaded.map((skill) => skill!.toolName),
+            not_found: results.notFound,
           });
         },
       }),
@@ -69,7 +69,9 @@ export const SkillsPlugin: Plugin = async (ctx) => {
             .describe('The search query string or array of strings.'),
         },
         execute: async (args) => {
-          return jsonToXml(api.findSkills(args), 'SkillSearchResults');
+          const results = await api.findSkills(args);
+          const output = jsonToXml(results, 'SkillSearchResults');
+          return output;
         },
       }),
 

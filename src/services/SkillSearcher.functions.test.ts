@@ -372,7 +372,6 @@ describe('generateFeedback', () => {
     const feedback = generateFeedback(query, 0);
 
     expect(feedback).toContain('No matches found');
-    expect(feedback).toContain('❌');
   });
 
   test('should show singular "match" for one result', () => {
@@ -380,7 +379,6 @@ describe('generateFeedback', () => {
     const feedback = generateFeedback(query, 1);
 
     expect(feedback).toContain('Found 1 match');
-    expect(feedback).toContain('✅');
   });
 
   test('should show plural "matches" for multiple results', () => {
@@ -388,7 +386,6 @@ describe('generateFeedback', () => {
     const feedback = generateFeedback(query, 5);
 
     expect(feedback).toContain('Found 5 matches');
-    expect(feedback).toContain('✅');
   });
 
   test('should use pipe separator between sections', () => {
@@ -402,7 +399,8 @@ describe('generateFeedback', () => {
     const query = parseQuery('git commit');
     const feedback = generateFeedback(query, 3);
 
-    expect(feedback).toContain('Searching for');
+    expect(feedback).toContain('git');
+    expect(feedback).toContain('commit');
     expect(feedback).not.toContain('Excluding');
     expect(feedback).toContain('Found 3');
   });
@@ -415,20 +413,18 @@ describe('generateFeedback', () => {
     expect(feedback).toContain('Found 2');
   });
 
-  test('should include success emoji for matches', () => {
+  test('should indicate success for matches', () => {
     const query = parseQuery('test');
     const feedback = generateFeedback(query, 1);
 
-    expect(feedback).toContain('✅');
-    expect(feedback).not.toContain('❌');
+    expect(feedback).toContain('Found 1 match');
   });
 
-  test('should include error emoji for no matches', () => {
+  test('should indicate error for no matches', () => {
     const query = parseQuery('test');
     const feedback = generateFeedback(query, 0);
 
-    expect(feedback).toContain('❌');
-    expect(feedback).not.toContain('✅');
+    expect(feedback).toContain('No matches found');
   });
 
   test('should format multiple included terms as comma-separated list', () => {

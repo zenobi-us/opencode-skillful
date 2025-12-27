@@ -88,7 +88,7 @@ export function generateFeedback(query: ParsedSkillQuery, matchCount: number): s
   const parts: string[] = [];
 
   if (query.include.length > 0) {
-    parts.push(`Searched for: "${query.include.join(', ')}**`);
+    parts.push(`Searching for: "**${query.originalQuery.join(' ')}**"`);
   } else {
     parts.push(`No include search terms provided`);
   }
@@ -133,14 +133,20 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
       query,
     };
 
+    console.log('Resolved skill search query:', query);
+    console.log('QueryString:', queryString);
+
     // List all skills if query is empty or "*"
-    if (queryString === '' || queryString === '*') {
+    if (
+      queryString === '' ||
+      queryString === '*' ||
+      (query.include.length === 1 && query.include[0] === '*') ||
+      (query.include.length === 0 && query.hasExclusions === false)
+    ) {
+      console.log('Listing all skills as no specific query terms were provided.');
       output.matches = skills;
       output.totalMatches = skills.length;
-      return output;
-    }
-
-    if (query.include.length === 0) {
+      output.feedback = `Listing all ${skills.length} skills`;
       return output;
     }
 

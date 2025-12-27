@@ -85,14 +85,36 @@ export async function createSkillRegistry(
   const initialise = async () => {
     // Find all SKILL.md files recursively
     const paths: string[] = [];
-    for (const basePath of config.basePaths.filter(doesPathExist)) {
+    const existingBasePaths = config.basePaths.filter(doesPathExist);
+
+    if (existingBasePaths.length === 0) {
+      console.warn(
+        '[OpencodeSkillful] No valid base paths found for skill discovery:',
+        config.basePaths
+      );
+      controller.ready.resolve();
+      return;
+    }
+
+    logger.debug('[SkillRegistryController] Discovering skills in base paths:', existingBasePaths);
+
+    for (const basePath of existingBasePaths) {
       const found = await findSkillPaths(basePath);
       paths.push(...found);
     }
-    logger.debug('[SkillRegistryController] skills.discovered', paths);
+
+    logger.debug('[SkillRegistryController] skills.discovered', paths.length);
     debug.discovered = paths.length;
 
+    if (paths.length === 0) {
+      controller.ready.resolve();
+      logger.debug('[SkillRegistryController] No skills found');
+      return;
+    }
+
     const results = await register(...paths);
+
+    logger.debug('[SkillRegistryController] skills.initialise results', results);
 
     debug.parsed = results.parsed;
     debug.rejected = results.rejected;
@@ -121,10 +143,8 @@ export async function createSkillRegistry(
 
     for await (const path of paths) {
       try {
-        logger.debug('[SkillRegistryController] readSkill', path);
         const content = await readSkillFile(path);
 
-        logger.debug('[SkillRegistryController] parseSkill', path);
         const skill = await parseSkill({
           skillPath: path,
           basePath: matchBasePath(path) || '',
@@ -140,7 +160,6 @@ export async function createSkillRegistry(
 
         // Register skill (or overwrite if same path)
         controller.set(skill.toolName, skill);
-        logger.debug('[SkillRegistryController] registered skill', skill.toolName, 'at', path);
         summary.parsed++;
       } catch (error) {
         summary.rejected++;
@@ -156,7 +175,7 @@ export async function createSkillRegistry(
 
   const search = createSkillSearcher(controller);
 
-  return { controller, initialise, register, search, debug, logger };
+  return { config, controller, initialise, register, search, debug, logger };
 }
 
 /**
