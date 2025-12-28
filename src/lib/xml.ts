@@ -23,7 +23,6 @@
  *
  * NOTE: This is a basic implementation. Edge cases like:
  * - Circular references (not handled)
- * - Special XML characters in values (not escaped)
  * - Deeply nested structures (may produce large output)
  * are not fully addressed. If you need full robustness, consider a library.
  *
@@ -31,6 +30,15 @@
  * @param rootElement XML element name for root (default: 'root')
  * @returns XML string representation
  */
+function escapeXml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 export function jsonToXml(json: object, rootElement: string = 'root'): string {
   let xml = `<${rootElement}>`;
 
@@ -51,7 +59,7 @@ export function jsonToXml(json: object, rootElement: string = 'root'): string {
     } else if (typeof value === 'object' && value !== null) {
       xml += jsonToXml(value, key);
     } else if (value !== undefined && value !== null) {
-      xml += `<${key}>${value}</${key}>`;
+      xml += `<${key}>${escapeXml(String(value))}</${key}>`;
     } else {
       xml += `<${key}/>`;
     }
