@@ -11,6 +11,7 @@ export const createApi = async (config: PluginConfig) => {
 
   return {
     registry,
+    logger,
     findSkills: createSkillFinder(registry),
     readResource: createSkillResourceReader(registry),
     loadSkill: createSkillLoader(registry),

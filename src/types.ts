@@ -2,6 +2,8 @@
  * Type definitions for OpenCode Skills Plugin
  */
 
+import { ReadyStateMachine } from './lib/ReadyStateMachine';
+
 /**
  * Skill resource map type for indexing skill resources
  *
@@ -105,7 +107,7 @@ export type SkillSearcher = (_query: string | string[]) => SkillSearchResult;
  * Skill registry controller interface
  */
 export type SkillRegistryController = {
-  ready: ReturnType<typeof Promise.withResolvers>;
+  ready: ReadyStateMachine;
   skills: Skill[];
   ids: string[];
   clear: () => void;
@@ -127,6 +129,8 @@ export type SkillRegistry = {
   config: PluginConfig;
   register: (...skillPaths: string[]) => Promise<SkillRegistryDebugInfo>;
   controller: SkillRegistryController;
+  isSkillPath: (_path: string) => boolean;
+  getToolnameFromSkillPath: (_path: string) => string | null;
   search: SkillSearcher;
   debug?: SkillRegistryDebugInfo;
   logger: PluginLogger;

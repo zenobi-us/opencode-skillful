@@ -185,9 +185,35 @@ export async function createSkillRegistry(
     return summary;
   };
 
+  const isSkillPath = (path: string) => {
+    return (
+      path.endsWith('SKILL.md') && config.basePaths.some((basePath) => path.startsWith(basePath))
+    );
+  };
+  const getToolnameFromSkillPath = (path: string): string | null => {
+    if (!isSkillPath(path)) {
+      return null;
+    }
+    const relativePath = relative(
+      config.basePaths.find((basePath) => path.startsWith(basePath)) || '',
+      path
+    );
+    return toolName(relativePath);
+  };
+
   const search = createSkillSearcher(controller);
 
-  return { config, controller, initialise, register, search, debug, logger };
+  return {
+    config,
+    controller,
+    initialise,
+    register,
+    isSkillPath,
+    getToolnameFromSkillPath,
+    search,
+    debug,
+    logger,
+  };
 }
 
 /**
