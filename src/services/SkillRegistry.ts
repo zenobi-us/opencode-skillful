@@ -150,7 +150,7 @@ export async function createSkillRegistry(
       const existingBasePaths = config.basePaths.filter(doesPathExist);
 
       if (existingBasePaths.length === 0) {
-        console.warn(
+        logger.warn(
           '[OpencodeSkillful] No valid base paths found for skill discovery:',
           config.basePaths
         );

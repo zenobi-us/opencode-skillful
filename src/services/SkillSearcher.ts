@@ -183,9 +183,6 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
       query,
     };
 
-    console.log('Resolved skill search query:', query);
-    console.log('QueryString:', queryString);
-
     // List all skills if query is empty or "*"
     if (
       queryString === '' ||
@@ -193,7 +190,6 @@ export function createSkillSearcher(registry: SkillRegistryController): SkillSea
       (query.include.length === 1 && query.include[0] === '*') ||
       (query.include.length === 0 && query.hasExclusions === false)
     ) {
-      console.log('Listing all skills as no specific query terms were provided.');
       output.matches = skills;
       output.totalMatches = skills.length;
       output.feedback = `Listing all ${skills.length} skills`;
