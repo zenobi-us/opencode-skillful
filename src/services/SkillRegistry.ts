@@ -20,6 +20,7 @@ import {
   detectMimeType,
 } from '../lib/SkillFs';
 import { createSkillSearcher } from './SkillSearcher';
+import { createReadyStateMachine } from '../lib/ReadyStateMachine';
 
 // Validation Schema
 const SkillFrontmatterSchema = tool.schema.object({
@@ -36,7 +37,7 @@ export function createSkillRegistryController() {
   const store = new Map<string, Skill>();
 
   const controller: SkillRegistryController = {
-    ready: Promise.withResolvers(),
+    ready: createReadyStateMachine(),
     get skills() {
       return Array.from(store.values()).sort((a, b) => a.name.localeCompare(b.name));
     },
@@ -83,44 +84,55 @@ export async function createSkillRegistry(
   };
 
   const initialise = async () => {
-    // Find all SKILL.md files recursively
-    const paths: string[] = [];
-    const existingBasePaths = config.basePaths.filter(doesPathExist);
+    controller.ready.setStatus('loading');
 
-    if (existingBasePaths.length === 0) {
-      console.warn(
-        '[OpencodeSkillful] No valid base paths found for skill discovery:',
-        config.basePaths
+    try {
+      // Find all SKILL.md files recursively
+      const paths: string[] = [];
+      const existingBasePaths = config.basePaths.filter(doesPathExist);
+
+      if (existingBasePaths.length === 0) {
+        console.warn(
+          '[OpencodeSkillful] No valid base paths found for skill discovery:',
+          config.basePaths
+        );
+        controller.ready.setStatus('ready');
+        return;
+      }
+
+      logger.debug(
+        '[SkillRegistryController] Discovering skills in base paths:',
+        existingBasePaths
       );
-      controller.ready.resolve();
-      return;
+
+      for (const basePath of existingBasePaths) {
+        const found = await findSkillPaths(basePath);
+        paths.push(...found);
+      }
+
+      logger.debug('[SkillRegistryController] skills.discovered', paths.length);
+      debug.discovered = paths.length;
+
+      if (paths.length === 0) {
+        controller.ready.setStatus('ready');
+        logger.debug('[SkillRegistryController] No skills found');
+        return;
+      }
+
+      const results = await register(...paths);
+
+      logger.debug('[SkillRegistryController] skills.initialise results', results);
+
+      debug.parsed = results.parsed;
+      debug.rejected = results.rejected;
+      debug.errors = results.errors;
+
+      controller.ready.setStatus('ready');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('[SkillRegistryController] Initialization failed:', errorMessage);
+      controller.ready.setStatus('error');
     }
-
-    logger.debug('[SkillRegistryController] Discovering skills in base paths:', existingBasePaths);
-
-    for (const basePath of existingBasePaths) {
-      const found = await findSkillPaths(basePath);
-      paths.push(...found);
-    }
-
-    logger.debug('[SkillRegistryController] skills.discovered', paths.length);
-    debug.discovered = paths.length;
-
-    if (paths.length === 0) {
-      controller.ready.resolve();
-      logger.debug('[SkillRegistryController] No skills found');
-      return;
-    }
-
-    const results = await register(...paths);
-
-    logger.debug('[SkillRegistryController] skills.initialise results', results);
-
-    debug.parsed = results.parsed;
-    debug.rejected = results.rejected;
-    debug.errors = results.errors;
-
-    controller.ready.resolve();
   };
 
   const matchBasePath = (absolutePath: string): string | null => {

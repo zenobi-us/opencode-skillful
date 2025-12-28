@@ -6,7 +6,7 @@ export function createSkillResourceReader(provider: SkillRegistry) {
   const skillResourceResolver = createSkillResourceResolver(provider);
 
   return async (args: { skill_name: string; relative_path: string }) => {
-    await provider.controller.ready.promise;
+    await provider.controller.ready.whenReady();
 
     const [type, ...restPath] = args.relative_path.split('/');
 
