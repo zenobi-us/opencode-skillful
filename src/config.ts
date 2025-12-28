@@ -28,7 +28,7 @@
  */
 
 import type { PluginInput } from '@opencode-ai/plugin';
-import { join } from 'path/posix';
+import { join } from 'node:path';
 import { mergeDeepLeft } from 'ramda';
 import type { PluginConfig } from './types';
 import envPaths from 'env-paths';
