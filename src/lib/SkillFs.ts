@@ -1,3 +1,14 @@
+/**
+ * SkillFs - Abstract filesystem access for skills
+ *
+ * This module encapsulates all filesystem operations related to skill discovery and loading.
+ * It provides a mockable interface that works across different Node.js implementations,
+ * enabling unit tests to stub filesystem operations without complex mocking libraries.
+ *
+ * Each function is designed as a pure export to be easily replaced in test environments
+ * (e.g., via mocking FS access in test suites).
+ */
+
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import mime from 'mime';

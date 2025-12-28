@@ -9,6 +9,47 @@ import {
   SkillResourceMap,
 } from '../types';
 
+/**
+ * SkillRegistry - Central Skill Discovery, Parsing, and Cataloging
+ *
+ * WHY: This is the heart of the plugin system. It needs to:
+ * 1. Discover all SKILL.md files across multiple base paths (e.g., project-local + user global)
+ * 2. Parse each skill's YAML frontmatter (metadata, allowed-tools, etc.)
+ * 3. Index all resources (scripts/assets/references) for safe path-based retrieval
+ * 4. Coordinate async initialization with a ready state machine
+ * 5. Provide search functionality via SkillSearcher
+ *
+ * DESIGN: Factory pattern with two controllers:
+ * - createSkillRegistryController(): lightweight Map-based storage with ready state
+ * - createSkillRegistry(): higher-level coordinator with discovery/parsing pipeline
+ *
+ * KEY RESPONSIBILITIES:
+ * - Discovery: scans base paths for SKILL.md files recursively
+ * - Parsing: validates YAML frontmatter against schema, extracts markdown content
+ * - Resource Mapping: indexes all scripts/assets/references at parse time to prevent
+ *   path traversal attacks (caller cannot request arbitrary paths)
+ * - Initialization: async process with state tracking (idle → loading → ready/error)
+ * - Search Integration: provides SkillSearcher for natural language queries
+ *
+ * DUPLICATE HANDLING: If the same skill appears in multiple base paths, the last one wins
+ * (logged but not an error). Skills are keyed by toolName (derived from relative path).
+ *
+ * ERROR HANDLING: Parse errors are collected in debug info but don't halt initialization.
+ * Malformed SKILL.md files are rejected with error logging, skill discovery continues.
+ *
+ * FRONTMATTER SCHEMA:
+ *   - description: required, min 20 chars (enforced by Zod schema)
+ *   - license: optional
+ *   - allowed-tools: optional array of tool names
+ *   - metadata: optional record of key-value strings
+ *
+ * EXAMPLE FLOW:
+ *   const registry = await createSkillRegistry(config, logger);
+ *   await registry.initialise(); // async discovery + parsing
+ *   const results = registry.search('git commit');
+ *   const skill = registry.controller.get('writing-git-commits');
+ */
+
 import { dirname, basename, relative } from 'node:path';
 import matter from 'gray-matter';
 import { toolName } from '../lib/Identifiers';
@@ -83,6 +124,23 @@ export async function createSkillRegistry(
     errors: [],
   };
 
+  /**
+   * Initialise - Async skill discovery and parsing pipeline
+   *
+   * WHY: Registry must scan the file system for all SKILL.md files, parse them,
+   * and register them before tools can execute. This async process transitions
+   * the ready state machine to signal when discovery is complete.
+   *
+   * FLOW:
+   * 1. Filter base paths to only those that exist (avoid errors on missing dirs)
+   * 2. Scan all base paths recursively for SKILL.md files
+   * 3. Parse each file with register() helper
+   * 4. Collect statistics (discovered, parsed, rejected) and errors
+   * 5. Transition ready state to 'ready' or 'error'
+   *
+   * WHY NOT THROWN ERRORS: If one skill fails to parse, we log it and continue.
+   * The plugin should remain usable even if 1 out of 100 skills is malformed.
+   */
   const initialise = async () => {
     controller.ready.setStatus('loading');
 
@@ -144,6 +202,22 @@ export async function createSkillRegistry(
     return null;
   };
 
+  /**
+   * Register - Parse and store multiple skill files
+   *
+   * WHY: Separated from initialise() to allow both initial discovery registration
+   * and potential live registration of new skills (future feature).
+   *
+   * ALGORITHM:
+   * 1. Read each skill file's content
+   * 2. Parse it via parseSkill() helper (validates frontmatter, indexes resources)
+   * 3. If parse succeeds, store in controller.skills Map by toolName
+   * 4. If parse fails, log error and continue (resilient to corrupted files)
+   * 5. Return summary for logging/debugging
+   *
+   * WHY AWAIT ON parseSkill: Each file read is async, no parallelization needed
+   * since we're I/O bound and want strict ordering for consistent results.
+   */
   const register = async (...paths: string[]) => {
     logger.debug(`[SkillRegistryController] register [${paths.length}] skills`);
     const summary: SkillRegistryDebugInfo = {
@@ -218,7 +292,26 @@ export async function createSkillRegistry(
 
 /**
  * Parse a SKILL.md file and return structured skill data
- * Returns null if parsing fails (with error logging)
+ *
+ * WHY: Encapsulates the complex multi-step parsing pipeline to keep register() clean.
+ * Each SKILL.md file has YAML frontmatter followed by markdown content. We need to:
+ * 1. Extract and validate the YAML metadata
+ * 2. Build the skill name from directory structure
+ * 3. Index all resources (scripts, references, assets) for safe retrieval
+ * 4. Return a complete Skill object or null on error
+ *
+ * CRITICAL SECURITY: All resource paths are computed at parse time and stored in
+ * script/reference/asset Maps. Tools later retrieve by key, never by arbitrary path.
+ * This prevents path traversal attacks (no way to request ../../../etc/passwd).
+ *
+ * WHY YAML FRONTMATTER: Standard markdown pattern (used by Jekyll, Next.js, etc).
+ * Allows skill metadata to be human-readable and editable alongside content.
+ *
+ * TOOL NAME DERIVATION: Takes relative path from base path and converts to tool name.
+ * Example: "skills/writing/git-commits/SKILL.md" → "writing_git_commits"
+ *
+ * @returns Skill object on success, null on error (with error logging)
+ * @throws Error with detailed message if parsing fails validation
  */
 async function parseSkill(args: {
   skillPath: string;

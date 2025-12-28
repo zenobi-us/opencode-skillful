@@ -377,39 +377,308 @@ The plugin reads configuration from the OpenCode config file (`~/.config/opencod
 
 ## Architecture
 
-The plugin consists of two main layers:
+### System Design Overview
 
-### Services Layer (`src/services/`)
+The plugin uses a **layered, modular architecture** with clear separation of concerns and two-phase initialization.
 
-Core business logic for skill management:
+#### Design Principles
 
-- **SkillProvider**: Main interface for accessing the skill registry and searcher
-- **SkillRegistry**: Manages skill storage, lookup, and lifecycle
-- **SkillSearcher**: Implements search parsing and matching logic
-  - Supports natural language queries (Gmail-style syntax)
-  - Handles negation, quoted phrases, and path prefix matching
-  - Scores results by relevance (name matches weighted higher)
-- **SkillFs**: Filesystem abstraction for skill discovery
-- **SkillResourceResolver**: Resolves and reads resource files from skill directories
-- **ScriptResourceExecutor**: Executes scripts from skill resources
-- **OpenCodeChat**: Injects skill content and resources into chat context
+- **Async Coordination**: ReadyStateMachine ensures tools don't execute before registry initialization completes
+- **Security-First Resource Access**: All resources are pre-indexed at parse time; no path traversal possible
+- **Factory Pattern**: Centralized API creation for easy testing and configuration management
+- **Lazy Loading**: Skills only injected when explicitly requested, minimal memory overhead
 
-### Tools Layer (`src/tools/`)
+### System Layers
 
-Four tool implementations that expose plugin functionality:
+```
+┌──────────────────────────────────────────────────────┐
+│ Plugin Entry Point (index.ts)                        │
+│ - Defines 3 core tools: skill_find, skill_use,      │
+│   skill_resource                                     │
+│ - Initializes API factory and config                │
+│ - Manages message injection (XML serialization)      │
+└──────────────────────────────────────────────────────┘
+                          ↓
+┌──────────────────────────────────────────────────────┐
+│ API Factory Layer (api.ts, config.ts)                │
+│ - createApi(): initializes logger, registry, tools   │
+│ - getPluginConfig(): resolves base paths with proper │
+│   precedence (project-local overrides global)        │
+└──────────────────────────────────────────────────────┘
+                          ↓
+┌──────────────────────────────────────────────────────┐
+│ Services Layer (src/services/)                       │
+│ - SkillRegistry: discovery, parsing, resource       │
+│   mapping with ReadyStateMachine coordination        │
+│ - SkillSearcher: query parsing + intelligent ranking│
+│ - SkillResourceResolver: safe path-based retrieval   │
+│ - SkillFs (via lib): filesystem abstraction (mockable)
+└──────────────────────────────────────────────────────┘
+                          ↓
+┌──────────────────────────────────────────────────────┐
+│ Core Libraries (src/lib/)                            │
+│ - ReadyStateMachine: async initialization sequencing │
+│ - SkillFs: abstract filesystem operations            │
+│ - Identifiers: path ↔ tool name conversions          │
+│ - OpenCodeChat: message injection abstraction        │
+│ - xml.ts: JSON → XML serialization                   │
+└──────────────────────────────────────────────────────┘
+```
 
-- **SkillFinder.ts**: `skill_find` - Search and discover skills
-- **SkillUser.ts**: `skill_use` - Load skills into context
-- **SkillResourceReader.ts**: `skill_resource` - Read skill resource files
-- **SkillScriptExec.ts**: `skill_exec` - Execute skill scripts
+### Initialization Flow (Why This Matters)
 
-Each tool:
+The plugin uses a **two-phase initialization pattern** to coordinate async discovery with tool execution:
 
-1. Validates input parameters
-2. Delegates to service layer logic
-3. Formats results as XML/JSON
-4. Silently injects skill content via OpenCodeChat
-5. Returns human-readable feedback to the agent
+```
+PHASE 1: SYNCHRONOUS CREATION
+├─ Plugin loads configuration
+├─ createApi() called:
+│  ├─ Creates logger
+│  ├─ Creates SkillRegistry (factory, NOT initialized yet)
+│  └─ Returns registry + tool creators
+└─ index.ts registers tools immediately
+
+PHASE 2: ASYNCHRONOUS DISCOVERY (Background)
+├─ registry.initialise() called
+│  ├─ Sets ready state to "loading"
+│  ├─ Scans all base paths for SKILL.md files
+│  ├─ Parses each file (YAML frontmatter + resources)
+│  ├─ Pre-indexes all resources (scripts/assets/references)
+│  └─ Sets ready state to "ready"
+│
+└─ WHY PRE-INDEXING: Prevents path traversal attacks.
+   Tools can only retrieve pre-registered resources,
+   never arbitrary filesystem paths.
+
+PHASE 3: TOOL EXECUTION (User Requested)
+├─ User calls: skill_find("git commits")
+├─ Tool executes:
+│  ├─ await registry.controller.ready.whenReady()
+│  │  (blocks until Phase 2 completes)
+│  ├─ Search registry
+│  └─ Return results
+└─ WHY THIS PATTERN: Multiple tools can call whenReady()
+   at different times without race conditions.
+   Simple Promise would resolve once; this allows
+   concurrent waiters.
+```
+
+### Data Flow Diagram: skill_find Query
+
+```
+┌─────────────────────────────────────────┐
+│ User Query: skill_find("git commit")    │
+└────────────┬────────────────────────────┘
+             ↓
+┌─────────────────────────────────────────┐
+│ SkillFinder Tool (tools/SkillFinder.ts) │
+│ - Validates query string                │
+│ - Awaits: controller.ready.whenReady()  │
+└────────────┬────────────────────────────┘
+             ↓ (continues when registry ready)
+┌─────────────────────────────────────────┐
+│ SkillSearcher.search()                  │
+│ - Parse query via search-string library │
+│   ("git commit" → include: [git,commit])│
+│ - Filter ALL include terms must match   │
+│   (name, description, or toolName)      │
+│ - Exclude results matching exclude      │
+│   terms                                 │
+│ - Rank results:                         │
+│   * nameMatches × 3 (strong signal)     │
+│   * descMatches × 1 (weak signal)       │
+│   * exact match bonus +10                │
+└────────────┬────────────────────────────┘
+             ↓
+┌─────────────────────────────────────────┐
+│ Results with Feedback                   │
+│ - Matched skills array                  │
+│ - Sorted by relevance score             │
+│ - User-friendly feedback message        │
+│   "Searching for: **git commit** |      │
+│    Found 3 matches"                     │
+└────────────┬────────────────────────────┘
+             ↓
+┌─────────────────────────────────────────┐
+│ Format & Return (index.ts)              │
+│ - Convert to XML via jsonToXml()        │
+│ - Inject into message context           │
+│ - Return to user                        │
+└─────────────────────────────────────────┘
+```
+
+### Data Flow Diagram: skill_use Loading
+
+```
+┌──────────────────────────────────┐
+│ User: skill_use("git-commits")   │
+└────────────┬─────────────────────┘
+             ↓
+┌──────────────────────────────────┐
+│ SkillUser Tool (tools/SkillUser) │
+│ - Await ready state              │
+│ - Validate skill names           │
+└────────────┬─────────────────────┘
+             ↓
+┌──────────────────────────────────┐
+│ Registry.controller.get(key)     │
+│ - Look up skill in Map           │
+│ - Return Skill object with:      │
+│   * Name, description            │
+│   * Content (markdown)           │
+│   * Resource maps (indexed)      │
+└────────────┬─────────────────────┘
+             ↓
+┌──────────────────────────────────┐
+│ Format Skill for Injection       │
+│ - Skill metadata                 │
+│ - Resource inventory (with MIME) │
+│ - Full content as markdown       │
+│ - Base directory context         │
+└────────────┬─────────────────────┘
+             ↓
+┌──────────────────────────────────┐
+│ Silent Injection Pattern         │
+│ - Inject as user message         │
+│ - Persists in conversation       │
+│ - Returns success summary        │
+│   { loaded: [...], notFound: []}│
+└──────────────────────────────────┘
+```
+
+### Data Flow Diagram: skill_resource Access
+
+```
+┌──────────────────────────────────────────────┐
+│ User: skill_resource("git-commits",         │
+│                     "scripts/commit.sh")     │
+└──────────────┬───────────────────────────────┘
+               ↓
+┌──────────────────────────────────────────────┐
+│ SkillResourceReader Tool                     │
+│ (tools/SkillResourceReader.ts)               │
+│ - Validate skill_name                       │
+│ - Parse path: "scripts/commit.sh"            │
+│   ├─ type = "scripts"                        │
+│   └─ relative_path = "commit.sh"             │
+│ - Assert type is valid (scripts|assets|refs)│
+└──────────────┬───────────────────────────────┘
+               ↓
+┌──────────────────────────────────────────────┐
+│ SkillResourceResolver                       │
+│ - Fetch skill object from registry           │
+│ - Look up in skill.scripts Map               │
+│   (pre-indexed at parse time)                │
+│ - Retrieve: { absolutePath, mimeType }      │
+│                                              │
+│ ★ SECURITY: Only pre-indexed paths exist    │
+│   No way to request ../../../etc/passwd      │
+└──────────────┬───────────────────────────────┘
+               ↓
+┌──────────────────────────────────────────────┐
+│ File I/O (SkillFs abstraction)               │
+│ - Read file content from absolutePath        │
+│ - Detect MIME type (e.g., text/plain)       │
+└──────────────┬───────────────────────────────┘
+               ↓
+┌──────────────────────────────────────────────┐
+│ Return Injection Object                      │
+│ {                                            │
+│   skill_name,                                │
+│   resource_path,                             │
+│   resource_mimetype,                         │
+│   content                                    │
+│ }                                            │
+└──────────────┬───────────────────────────────┘
+               ↓
+┌──────────────────────────────────────────────┐
+│ Silent Injection                             │
+│ - Inject content into message                │
+│ - User sees resource inline                  │
+└──────────────────────────────────────────────┘
+```
+
+### Key Design Decisions and Their Rationale
+
+| Decision                     | Why                                                | Impact                                                       |
+| ---------------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| **ReadyStateMachine**        | Ensures tools don't race with async registry setup | Tools are guaranteed registry is ready before execution      |
+| **Pre-indexed Resources**    | Prevents path traversal attacks                    | Security: only pre-registered paths retrievable              |
+| **Factory Pattern (api.ts)** | Centralizes initialization                         | Easy to test, swap implementations, mock components          |
+| **Removed SkillProvider**    | Eliminated unnecessary abstraction                 | Simpler code, direct registry access, easier debugging       |
+| **XML Serialization**        | Human-readable message injection                   | Results display nicely formatted in chat context             |
+| **Two-phase Init**           | Async discovery doesn't block tool registration    | Tools available immediately, discovery happens in background |
+
+### Services Layer Breakdown
+
+#### SkillRegistry (`src/services/SkillRegistry.ts`)
+
+- **Role**: Central skill catalog and discovery engine
+- **Responsibilities**:
+  1. Scan multiple base paths for SKILL.md files (recursive)
+  2. Parse each file's YAML frontmatter (validates schema)
+  3. Index all resources (scripts/assets/references) for safe retrieval
+  4. Register skills in controller.skills Map by toolName
+  5. Coordinate initialization via ReadyStateMachine
+- **Key Methods**:
+  - `initialise()`: Async discovery and parsing pipeline
+  - `register()`: Parse and store skill files
+  - `parseSkill()`: Extract metadata and resource paths
+- **Error Handling**: Malformed skills logged but don't halt discovery
+
+#### SkillSearcher (`src/services/SkillSearcher.ts`)
+
+- **Role**: Natural language query interpretation and ranking
+- **Responsibilities**:
+  1. Parse queries using search-string library (Gmail syntax)
+  2. Filter: ALL include terms must match (AND logic)
+  3. Exclude: Remove results matching exclude terms
+  4. Rank by relevance (name matches 3×, description 1×, exact +10)
+  5. Generate user-friendly feedback
+- **Scoring Formula**: `(nameMatches × 3) + (descMatches × 1) + exactBonus`
+- **Edge Cases**: Empty queries or "\*" list all skills
+
+### Tools Layer Overview
+
+#### SkillFinder (`src/tools/SkillFinder.ts`)
+
+- Wraps SkillSearcher with ready-state synchronization
+- Transforms results to SkillFinder schema
+- Returns matched skills + summary metadata
+
+#### SkillUser (`src/tools/SkillUser.ts`)
+
+- Loads skills into chat context
+- Injects as user message (persists in conversation)
+- Returns { loaded: [...], notFound: [...] }
+
+#### SkillResourceReader (`src/tools/SkillResourceReader.ts`)
+
+- Safe resource path parsing and validation
+- Pre-indexed path lookup (prevents traversal)
+- Returns injection object with MIME type and content
+
+### Configuration and Path Resolution
+
+```
+Configuration Priority (Last Wins):
+1. Global: ~/.opencode/skills/ (lowest)
+2. Project: ./.opencode/skills/ (highest)
+
+Why This Order:
+- Users install global skills once
+- Projects override with local versions
+- Same skill name in both → project version wins
+```
+
+## Contributing
+
+Contributions are welcome! When adding features, follow these principles:
+
+- **Explain the WHY, not the WHAT**: Code comments should document design decisions, not mechanics
+- **Keep modules focused**: Each file has one primary responsibility
+- **Test async behavior**: Ready state coordination is critical
+- **Document algorithms**: Ranking, parsing, and search logic should have detailed comments
 
 ## Creating Skills
 
