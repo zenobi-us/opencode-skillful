@@ -87,8 +87,24 @@ export const createMdPromptRenderer = (): PromptRenderer => {
         // Nested object in array
         const nestedObj = item as Record<string, unknown>;
         for (const [key, value] of Object.entries(nestedObj)) {
-          const escapedValue = htmlEscape(String(value));
-          output += `${indent}- **${key}**: *${escapedValue}*`;
+          if (value === null || value === undefined) {
+            continue;
+          }
+
+          if (typeof value === 'object') {
+            if (Array.isArray(value)) {
+              // Nested array inside object in array
+              output += `${indent}- **${key}**:\n`;
+              output += renderArray(value, indentLevel + 1);
+            } else {
+              // Nested object inside object in array
+              output += `${indent}- **${key}**\n`;
+              output += renderObject(value as Record<string, unknown>, 4, indentLevel + 1);
+            }
+          } else {
+            const escapedValue = htmlEscape(String(value));
+            output += `${indent}- **${key}**: *${escapedValue}*\n`;
+          }
         }
       } else if (Array.isArray(item)) {
         // Nested array - recurse
@@ -96,7 +112,7 @@ export const createMdPromptRenderer = (): PromptRenderer => {
       } else {
         // Simple value
         const escapedValue = htmlEscape(String(item));
-        output += `${indent}- *${escapedValue}*`;
+        output += `${indent}- *${escapedValue}*\n`;
       }
     }
 
