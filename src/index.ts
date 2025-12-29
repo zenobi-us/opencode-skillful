@@ -53,8 +53,8 @@ export const SkillsPlugin: Plugin = async (ctx) => {
       // Track model usage per message
       modelIdAccountant.track({
         messageID: input.messageID,
-        providerID: input.model?.providerID,
-        modelID: input.model?.modelID,
+        providerID: input.model.providerID,
+        modelID: input.model.modelID,
         sessionID: input.sessionID,
       });
     },
