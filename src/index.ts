@@ -50,7 +50,7 @@ export const SkillsPlugin: Plugin = async (ctx) => {
         return;
       }
 
-      // Track model usage per messagoe
+      // Track model usage per message
       modelIdAccountant.track({
         messageID: input.messageID,
         providerID: input.model?.providerID,
@@ -83,7 +83,7 @@ export const SkillsPlugin: Plugin = async (ctx) => {
           const modelInfo = modelIdAccountant.getModelInfo({ messageID, sessionID });
 
           // Resolve the appropriate format for the current model
-          const format = await getModelFormat({
+          const format = getModelFormat({
             modelId: modelInfo?.modelID,
             providerId: modelInfo?.providerID,
             config,
@@ -117,7 +117,7 @@ export const SkillsPlugin: Plugin = async (ctx) => {
           const modelInfo = modelIdAccountant.getModelInfo({ messageID, sessionID });
 
           // Resolve the appropriate format for the current model
-          const format = await getModelFormat({
+          const format = getModelFormat({
             config,
             modelId: modelInfo?.modelID,
             providerId: modelInfo?.providerID,
@@ -144,7 +144,7 @@ export const SkillsPlugin: Plugin = async (ctx) => {
           const modelInfo = modelIdAccountant.getModelInfo({ messageID, sessionID });
 
           // Resolve the appropriate format for the current model
-          const format = await getModelFormat({
+          const format = getModelFormat({
             config,
             modelId: modelInfo?.modelID,
             providerId: modelInfo?.providerID,

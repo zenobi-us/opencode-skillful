@@ -24,21 +24,20 @@ import type { PluginConfig } from '../types';
 /**
  * Resolve the appropriate prompt format for the current model
  *
- * @param client The OpenCode plugin client (provides session access)
- * @param toolCtx The tool execution context (has sessionID and messageID)
- * @param config The plugin configuration (has promptRenderer and modelRenderers)
+ * @param args An object containing:
+ *   - modelId?: The identifier of the active model (e.g., "claude-3-5-sonnet")
+ *   - providerId?: The identifier of the model provider (e.g., "anthropic")
+ *   - config: The plugin configuration (has promptRenderer and modelRenderers)
  * @returns The format to use: 'json' | 'xml' | 'md'
  */
-export async function getModelFormat(args: {
+export function getModelFormat(args: {
   modelId?: string;
   providerId?: string;
   config: PluginConfig;
-}): Promise<'json' | 'xml' | 'md'> {
-  const renderer =
+}): 'json' | 'xml' | 'md' {
+  return (
     args.config.modelRenderers?.[`${args.providerId}-${args.modelId}`] ??
     args.config.modelRenderers?.[`${args.modelId}`] ??
-    args.config.promptRenderer;
-
-  // Fall back to global default
-  return renderer;
+    args.config.promptRenderer
+  );
 }
