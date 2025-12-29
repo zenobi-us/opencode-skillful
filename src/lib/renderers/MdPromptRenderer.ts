@@ -135,7 +135,10 @@ export const createMdPromptRenderer = (): PromptRenderer => {
       .replace(/'/g, '&#39;');
   };
 
-  const render = <T extends { content: string }>(data: T, rootElement: string): string => {
+  const render = <T extends { content?: string }>(
+    data: T,
+    rootElement: string = 'Prompt'
+  ): string => {
     // Separate out the 'content' field if it exists (for skills)
     const { content, ...restData } = data;
 
