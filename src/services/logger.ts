@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { LogType, PluginConfig, PluginLogger } from '../types';
 
 const namespace = '[OpencodeSkillful]';
