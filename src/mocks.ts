@@ -98,5 +98,7 @@ function createMockConfig() {
   return {
     debug: false,
     basePaths: ['/mock/path/to/skills'],
+    promptRenderer: 'xml' as const,
+    modelRenderers: {},
   };
 }

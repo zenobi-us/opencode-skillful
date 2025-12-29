@@ -7,10 +7,14 @@
 
 import type { PromptRenderer } from '../PromptRenderer';
 
-export class JsonPromptRenderer implements PromptRenderer {
-  readonly format = 'json' as const;
+export const createJsonPromptRenderer = (): PromptRenderer => {
+  const format = 'json' as const;
+  const render = (data: object, rootElement: string): string => {
+    return JSON.stringify({ [rootElement]: data }, null, 2);
+  };
 
-  render(data: object): string {
-    return JSON.stringify(data, null, 2);
-  }
-}
+  return {
+    format,
+    render,
+  };
+};

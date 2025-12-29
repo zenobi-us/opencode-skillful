@@ -9,10 +9,15 @@
 import type { PromptRenderer } from '../PromptRenderer';
 import { jsonToXml } from '../xml';
 
-export class XmlPromptRenderer implements PromptRenderer {
-  readonly format = 'xml' as const;
+export const createXmlPromptRenderer = (): PromptRenderer => {
+  const format = 'xml' as const;
 
-  render(data: object, rootElement: string = 'root'): string {
+  const render = (data: object, rootElement: string = 'root'): string => {
     return jsonToXml(data, rootElement);
-  }
-}
+  };
+
+  return {
+    format,
+    render,
+  };
+};

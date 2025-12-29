@@ -7,10 +7,9 @@
  * - Handle invalid formats gracefully
  */
 
-import type { PromptRenderer } from './PromptRenderer';
-import { JsonPromptRenderer } from './renderers/JsonPromptRenderer';
-import { XmlPromptRenderer } from './renderers/XmlPromptRenderer';
-import { MdPromptRenderer } from './renderers/MdPromptRenderer';
+import { createJsonPromptRenderer } from './renderers/JsonPromptRenderer';
+import { createXmlPromptRenderer } from './renderers/XmlPromptRenderer';
+import { createMdPromptRenderer } from './renderers/MdPromptRenderer';
 
 /**
  * Create a prompt renderer for the specified format
@@ -19,19 +18,27 @@ import { MdPromptRenderer } from './renderers/MdPromptRenderer';
  * @returns A PromptRenderer instance for the specified format
  * @throws Error if format is not recognized
  */
-export function createPromptRenderer(format: 'json' | 'xml' | 'md'): PromptRenderer {
-  switch (format) {
-    case 'json':
-      return new JsonPromptRenderer();
-    case 'xml':
-      return new XmlPromptRenderer();
-    case 'md':
-      return new MdPromptRenderer();
-    default: {
-      const _exhaustive: never = format;
-      throw new Error(
-        `Unknown prompt renderer format: ${_exhaustive}. Expected 'json', 'xml', or 'md'.`
-      );
+export function createPromptRenderer() {
+  const renderers = {
+    json: createJsonPromptRenderer(),
+    xml: createXmlPromptRenderer(),
+    md: createMdPromptRenderer(),
+  };
+
+  const getFormatter = (format: 'json' | 'xml' | 'md') => {
+    switch (format) {
+      case 'json':
+        return renderers.json.render;
+      case 'xml':
+        return renderers.xml.render;
+      case 'md':
+        return renderers.md.render;
+      default:
+        throw new Error(`Unsupported format: ${format}`);
     }
-  }
+  };
+
+  return {
+    getFormatter,
+  };
 }

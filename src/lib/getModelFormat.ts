@@ -7,20 +7,19 @@
  * - Other models: may benefit from markdown readability
  *
  * This function detects the active model and selects the configured
- * format preference for that model, falling back to the global default.
+ * format preference for that model, falling back to progressively more
+ * generic model patterns.
  *
  * HOW IT WORKS:
  * 1. Query the current session via client.session.message()
- * 2. Extract the modelID from the response
- * 3. Check if modelRenderers[modelID] exists in config
- * 4. Return model-specific format, or fall back to promptRenderer default
+ * 2. Extract the modelID from the response (e.g., "anthropic-claude-3-5-sonnet")
+ * 3. Try matching in order:
+ *    - Full model ID (e.g., "anthropic-claude-3-5-sonnet")
+ *    - Generic model pattern (e.g., "claude-3-5-sonnet")
+ * 4. If no match, fall back to promptRenderer default
  */
 
-import type { ToolContext } from '@opencode-ai/plugin';
 import type { PluginConfig } from '../types';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type OpencodeClient = any; // Client type from OpenCode plugin
 
 /**
  * Resolve the appropriate prompt format for the current model
@@ -30,43 +29,16 @@ type OpencodeClient = any; // Client type from OpenCode plugin
  * @param config The plugin configuration (has promptRenderer and modelRenderers)
  * @returns The format to use: 'json' | 'xml' | 'md'
  */
-export async function getModelFormat(
-  client: OpencodeClient,
-  toolCtx: ToolContext,
-  config: PluginConfig
-): Promise<'json' | 'xml' | 'md'> {
-  if (!client?.session?.message) {
-    // Client doesn't have session access, use default
-    return config.promptRenderer;
-  }
-
-  try {
-    // Query current session to get model information
-    const result = await client.session.message({
-      sessionID: toolCtx.sessionID,
-      messageID: toolCtx.messageID,
-    });
-
-    // Extract modelID from nested response structure
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const modelID = (result as Record<string, any>)?.data?.info?.modelID;
-
-    if (modelID && typeof modelID === 'string') {
-      // Check if there's a model-specific renderer preference
-      if (config.modelRenderers?.[modelID]) {
-        return config.modelRenderers[modelID];
-      }
-    }
-  } catch (error) {
-    // If we can't fetch the model info, we'll just use the default
-    // Log at debug level so it doesn't spam production logs
-    if (config.debug) {
-      const message = error instanceof Error ? error.message : String(error);
-      // eslint-disable-next-line no-console
-      console.warn(`[DEBUG] Could not determine model format, falling back to default: ${message}`);
-    }
-  }
+export async function getModelFormat(args: {
+  modelId?: string;
+  providerId?: string;
+  config: PluginConfig;
+}): Promise<'json' | 'xml' | 'md'> {
+  const renderer =
+    args.config.modelRenderers?.[`${args.providerId}-${args.modelId}`] ??
+    args.config.modelRenderers?.[`${args.modelId}`] ??
+    args.config.promptRenderer;
 
   // Fall back to global default
-  return config.promptRenderer;
+  return renderer;
 }

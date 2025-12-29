@@ -5,7 +5,11 @@ echo ""
 echo "🍜 Setting up project"
 echo ""
 
-hk install
+# Only run hk install if not in a git worktree
+if ! git worktree list | grep -q "$(pwd)"; then
+	hk install
+fi
+
 bun install
 
 echo ""

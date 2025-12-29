@@ -17,28 +17,8 @@
 
 import type { PromptRenderer } from '../PromptRenderer';
 
-export class MdPromptRenderer implements PromptRenderer {
-  readonly format = 'md' as const;
-
-  render(data: object): string {
-    const lines: string[] = [];
-
-    // Separate out the 'content' field if it exists (for skills)
-    const { content, ...restData } = data as Record<string, unknown> & {
-      content?: string;
-    };
-
-    // Render the metadata section
-    this.renderObject(restData, 3, lines);
-
-    // Append skill content if it exists
-    if (content && typeof content === 'string') {
-      lines.push('', '---', '', '### Content', '');
-      lines.push(content);
-    }
-
-    return lines.join('\n');
-  }
+export const createMdPromptRenderer = (): PromptRenderer => {
+  const format = 'md' as const;
 
   /**
    * Recursively render an object with proper heading levels and list nesting
@@ -48,18 +28,18 @@ export class MdPromptRenderer implements PromptRenderer {
    * @param lines Array to accumulate output lines
    * @param indentLevel Current indentation level for list items
    */
-  private renderObject(
+  const renderObject = (
     obj: Record<string, unknown>,
     headingLevel: number,
-    lines: string[],
     indentLevel: number = 0
-  ): void {
+  ): string => {
     const entries = Object.entries(obj);
+    let output = '';
 
     for (const [key, value] of entries) {
       // Add heading for this key
       const heading = '#'.repeat(headingLevel);
-      lines.push(`${heading} ${key}`);
+      output += `${heading} ${key}`;
 
       if (value === null || value === undefined) {
         // Skip null/undefined values
@@ -68,25 +48,26 @@ export class MdPromptRenderer implements PromptRenderer {
 
       if (typeof value === 'object' && !Array.isArray(value)) {
         // Nested object - recurse with increased heading level
-        this.renderObject(
+        output += renderObject(
           value as Record<string, unknown>,
           Math.min(headingLevel + 1, 6),
-          lines,
           indentLevel
         );
       } else if (Array.isArray(value)) {
         // Array - render as nested list items
-        this.renderArray(value, lines, indentLevel);
+        output += renderArray(value, indentLevel);
       } else {
         // Leaf node - render as list item
         const indent = '  '.repeat(indentLevel);
-        const escapedValue = this.htmlEscape(String(value));
-        lines.push(`${indent}- **${key}**: *${escapedValue}*`);
+        const escapedValue = htmlEscape(String(value));
+        output += `${indent}- **${key}**: *${escapedValue}*`;
       }
 
-      lines.push(''); // Add spacing between items
+      output += '\n'; // Add spacing between items
     }
-  }
+
+    return output;
+  };
 
   /**
    * Render an array as nested list items
@@ -95,8 +76,9 @@ export class MdPromptRenderer implements PromptRenderer {
    * @param lines Array to accumulate output lines
    * @param indentLevel Current indentation level
    */
-  private renderArray(arr: unknown[], lines: string[], indentLevel: number): void {
+  const renderArray = (arr: unknown[], indentLevel: number): string => {
     const indent = '  '.repeat(indentLevel);
+    let output = '';
 
     for (const item of arr) {
       if (item === null || item === undefined) {
@@ -107,19 +89,21 @@ export class MdPromptRenderer implements PromptRenderer {
         // Nested object in array
         const nestedObj = item as Record<string, unknown>;
         for (const [key, value] of Object.entries(nestedObj)) {
-          const escapedValue = this.htmlEscape(String(value));
-          lines.push(`${indent}- **${key}**: *${escapedValue}*`);
+          const escapedValue = htmlEscape(String(value));
+          output += `${indent}- **${key}**: *${escapedValue}*`;
         }
       } else if (Array.isArray(item)) {
         // Nested array - recurse
-        this.renderArray(item, lines, indentLevel + 1);
+        output += renderArray(item, indentLevel + 1);
       } else {
         // Simple value
-        const escapedValue = this.htmlEscape(String(item));
-        lines.push(`${indent}- *${escapedValue}*`);
+        const escapedValue = htmlEscape(String(item));
+        output += `${indent}- *${escapedValue}*`;
       }
     }
-  }
+
+    return output;
+  };
 
   /**
    * HTML-escape special characters in values
@@ -128,12 +112,40 @@ export class MdPromptRenderer implements PromptRenderer {
    * @param value The value to escape
    * @returns The escaped value
    */
-  private htmlEscape(value: string): string {
+  const htmlEscape = (value: string): string => {
     return value
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
-  }
+  };
+
+  const render = <T extends { content: string }>(data: T, rootElement: string): string => {
+    // Separate out the 'content' field if it exists (for skills)
+    const { content, ...restData } = data;
+
+    // Render the metadata section
+    return `# ${rootElement}
+
+${renderObject(restData, 3)}
+
+${
+  (content &&
+    `---
+
+### Content
+
+${content}
+
+`) ||
+  ''
 }
+    `;
+  };
+
+  return {
+    format,
+    render,
+  };
+};

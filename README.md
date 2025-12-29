@@ -78,17 +78,23 @@ skill_find "testing -performance"
 
 ## Prompt Renderer Configuration
 
-The plugin supports multiple formats for prompt injection, allowing you to optimize for different LLM models:
+The plugin supports **multiple formats for prompt injection**, allowing you to optimize results for different LLM models and use cases.
+
+> See the [Configuration](#configuration) section for complete configuration details, including bunfig setup and global/project-level overrides.
 
 ### Supported Formats
 
-- **XML** (default): Claude-optimized, human-readable structured format
-- **JSON**: GPT-optimized, strict JSON formatting for strong parsing models
-- **Markdown**: Human-readable format with headings and nested lists
+Choose the format that works best for your LLM:
 
-### Configuration
+| Format            | Best For               | Characteristics                                                        |
+| ----------------- | ---------------------- | ---------------------------------------------------------------------- |
+| **XML** (default) | Claude models          | Human-readable, structured, XML-optimized for Claude                   |
+| **JSON**          | GPT and strict parsers | Machine-readable, strict JSON structure, strong parsing support        |
+| **Markdown**      | All models             | Readable prose, heading-based structure, easy to read in conversations |
 
-Create `.opencode-skillful.json` in your project root or `~/.config/opencode-skillful/config.json` globally:
+### Configuration Syntax
+
+Set your preferences in `.opencode-skillful.json`:
 
 ```json
 {
@@ -96,60 +102,67 @@ Create `.opencode-skillful.json` in your project root or `~/.config/opencode-ski
   "modelRenderers": {
     "claude-3-5-sonnet": "xml",
     "gpt-4": "json",
-    "llama-2": "md"
+    "gpt-4-turbo": "json"
   }
 }
 ```
 
-**Configuration Options:**
+**How It Works:**
 
-- `promptRenderer` (string): Global default format (`'xml'` | `'json'` | `'md'`). Default: `'xml'`
-- `modelRenderers` (object): Per-model format overrides. Map model IDs to preferred formats.
+1. Every tool execution checks the current active LLM model
+2. If `modelRenderers[modelID]` is configured, that format is used
+3. Otherwise, the global `promptRenderer` default is used
+4. Results are rendered in the selected format and injected into the prompt
 
-### How It Works
+### Format Output Examples
 
-1. When a tool executes (skill_use, skill_find, skill_resource), it queries the active model
-2. The plugin checks `modelRenderers[modelID]` for a model-specific preference
-3. If found, uses that format; otherwise falls back to `promptRenderer` default
-4. Renders the skill metadata/results in the selected format and injects into the prompt
-
-### Format Examples
-
-#### XML (Default - Claude Optimized)
+#### XML Format (Claude Optimized)
 
 ```xml
 <Skill>
-  <name>test-skill</name>
-  <description>A test skill</description>
-  <toolName>test_skill</toolName>
+  <name>git-commits</name>
+  <description>Guidelines for writing effective git commit messages</description>
+  <toolName>writing_git_commits</toolName>
 </Skill>
 ```
 
-#### JSON (GPT Optimized)
+**Advantages:**
+
+- Matches Claude's native instruction format
+- Clear tag-based structure
+- Excellent readability for complex nested data
+
+#### JSON Format (GPT Optimized)
 
 ```json
 {
-  "name": "test-skill",
-  "description": "A test skill",
-  "toolName": "test_skill"
+  "name": "git-commits",
+  "description": "Guidelines for writing effective git commit messages",
+  "toolName": "writing_git_commits"
 }
 ```
 
-#### Markdown (Human Readable)
+**Advantages:**
+
+- Strong parsing support across LLMs
+- Strict, validated structure
+- Familiar format for language models trained on JSON data
+
+#### Markdown Format (Human Readable)
 
 ```markdown
-### name
+## git-commits
 
-- **name**: _test-skill_
-
-### description
-
-- **description**: _A test skill_
-
-### toolName
-
-- **toolName**: _test_skill_
+- **name**: _git-commits_
+- **description**: _Guidelines for writing effective git commit messages_
+- **toolName**: _writing_git_commits_
 ```
+
+**Advantages:**
+
+- Most readable in conversations
+- Natural language-friendly
+- Works well for exploratory workflows
 
 ## Skill Discovery Paths
 
@@ -430,26 +443,133 @@ Non-zero exit codes indicate script failures. Always check STDERR and the exit c
 
 ## Configuration
 
-The plugin reads configuration from the OpenCode config file (`~/.config/opencode/config.json`):
+The plugin loads configuration from **bunfig**, supporting both project-local and global configuration files:
+
+### Configuration Files
+
+Configuration is loaded in this priority order (highest priority last):
+
+1. **Global config** (standard platform locations):
+   - Linux/macOS: `~/.config/opencode-skillful/config.json`
+   - Windows: `%APPDATA%/opencode-skillful/config.json`
+
+2. **Project config** (in your project root):
+   - `.opencode-skillful.json`
+
+Later configuration files override earlier ones. Use project-local `.opencode-skillful.json` to override global settings for specific projects.
+
+### Configuration Options
+
+#### Plugin Installation
+
+First, register the plugin in your OpenCode config (`~/.config/opencode/config.json`):
 
 ```json
 {
-  "plugins": ["@zenobius/opencode-skillful"],
-  "skillful": {
-    "debug": false,
-    "basePaths": ["~/.config/opencode/skills", ".opencode/skills"]
+  "plugins": ["@zenobius/opencode-skillful"]
+}
+```
+
+#### Skill Discovery Configuration
+
+Create `.opencode-skillful.json` in your project root or global config directory:
+
+```json
+{
+  "debug": false,
+  "basePaths": ["~/.config/opencode/skills", ".opencode/skills"],
+  "promptRenderer": "xml",
+  "modelRenderers": {}
+}
+```
+
+**Configuration Fields:**
+
+- **debug** (boolean, default: `false`): Enable debug output showing skill discovery stats
+  - When enabled, `skill_find` responses include discovered, parsed, rejected, and error counts
+  - Useful for diagnosing skill loading and parsing issues
+
+- **basePaths** (array, default: standard locations): Custom skill search directories
+  - Paths are searched in priority order; later paths override earlier ones for duplicate skill names
+  - Default: `[~/.config/opencode/skills, .opencode/skills]`
+  - Use project-local `.opencode/skills/` for project-specific skills
+  - Platform-aware paths: automatically resolves to XDG, macOS, or Windows standard locations
+
+- **promptRenderer** (string, default: `'xml'`): Default format for prompt injection
+  - Options: `'xml'` | `'json'` | `'md'`
+  - XML (default): Claude-optimized, human-readable structured format
+  - JSON: GPT-optimized, strict JSON formatting for strong parsing models
+  - Markdown: Human-readable format with headings and nested lists
+  - Used when no model-specific renderer is configured
+
+- **modelRenderers** (object, default: `{}`): Per-model format overrides
+  - Maps model IDs to preferred formats
+  - Overrides global `promptRenderer` for specific models
+  - Example: `{ "gpt-4": "json", "claude-3-5-sonnet": "xml" }`
+
+### How Renderer Selection Works
+
+When any tool executes (`skill_find`, `skill_use`, `skill_resource`):
+
+1. The plugin queries the OpenCode session to determine the active LLM model
+2. Builds a list of model candidates to check, from most to least specific:
+   - Full model ID (e.g., `"anthropic-claude-3-5-sonnet"`)
+   - Generic model pattern (e.g., `"claude-3-5-sonnet"`)
+3. Checks if any candidate exists in `modelRenderers` configuration
+   - First match wins (most specific takes precedence)
+   - If found, uses that format
+4. If no match in `modelRenderers`, falls back to `promptRenderer` default
+5. Renders the results in the selected format and injects into the prompt
+
+**Example**: If your config has `"claude-3-5-sonnet": "xml"` and the active model is `"anthropic-claude-3-5-sonnet"`, the plugin will:
+
+- Try matching `"anthropic-claude-3-5-sonnet"` (no match)
+- Try matching `"claude-3-5-sonnet"` (match found! Use XML)
+- Return `"xml"` format
+
+This allows different models to receive results in their preferred format without needing to specify every model variant. Configure the generic model name once and it works for all provider-prefixed variations.
+
+### Example Configurations
+
+#### Global Configuration for Multi-Model Setup
+
+`~/.config/opencode-skillful/config.json`:
+
+```json
+{
+  "debug": false,
+  "promptRenderer": "xml",
+  "modelRenderers": {
+    "claude-3-5-sonnet": "xml",
+    "claude-3-opus": "xml",
+    "gpt-4": "json",
+    "gpt-4-turbo": "json",
+    "llama-2-70b": "md"
   }
 }
 ```
 
-### Configuration Options
+#### Project-Specific Override
 
-- **debug** (boolean, default: `false`): Enable debug output showing skill discovery stats
-  - When enabled, `skill_find` includes discovered, parsed, rejected, and duplicate counts
-  - Useful for diagnosing skill loading issues
-- **basePaths** (array, default: standard locations): Custom skill search directories
-  - Paths are searched in order; later paths override earlier ones for duplicate skill names
-  - Use project-local `.opencode/skills/` for project-specific skills
+`.opencode-skillful.json` (project root):
+
+```json
+{
+  "debug": true,
+  "basePaths": ["~/.config/opencode/skills", ".opencode/skills", "./vendor/skills"],
+  "promptRenderer": "xml",
+  "modelRenderers": {
+    "gpt-4": "json"
+  }
+}
+```
+
+This project-local config:
+
+- Enables debug output for troubleshooting
+- Adds a custom vendor skills directory
+- Uses JSON format specifically for GPT-4 when it's the active model
+- Falls back to XML for all other models
 
 ## Architecture
 
