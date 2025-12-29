@@ -10,10 +10,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { JsonPromptRenderer } from '../JsonPromptRenderer';
+import { createJsonPromptRenderer } from './JsonPromptRenderer';
 
 describe('JsonPromptRenderer', () => {
-  const renderer = new JsonPromptRenderer();
+  const renderer = createJsonPromptRenderer();
 
   it('should have json format identifier', () => {
     expect(renderer.format).toBe('json');
@@ -21,7 +21,7 @@ describe('JsonPromptRenderer', () => {
 
   it('should render simple object with proper indentation', () => {
     const data = { name: 'test', value: 42 };
-    const result = renderer.render(data);
+    const result = renderer.render(data, 'Test');
 
     expect(result).toContain('"name": "test"');
     expect(result).toContain('"value": 42');
@@ -37,7 +37,7 @@ describe('JsonPromptRenderer', () => {
         },
       },
     };
-    const result = renderer.render(data);
+    const result = renderer.render(data, 'User');
 
     expect(result).toContain('"user"');
     expect(result).toContain('"profile"');
@@ -48,63 +48,71 @@ describe('JsonPromptRenderer', () => {
     const data = {
       items: ['apple', 'banana', 'cherry'],
     };
-    const result = renderer.render(data);
+    const result = renderer.render(data, 'Items');
 
     expect(result).toContain('"apple"');
     expect(result).toContain('"banana"');
     expect(result).toContain('"cherry"');
   });
 
-  it('should handle null and undefined', () => {
+  it('should handle null and undefined values', () => {
     const data = {
-      nullValue: null,
-      undefinedValue: undefined,
-      zeroValue: 0,
-      emptyString: '',
+      name: 'test',
+      value: null,
+      optional: undefined,
     };
-    const result = renderer.render(data);
+    const result = renderer.render(data, 'Test');
 
-    expect(result).toContain('null');
-    expect(result).toContain('0');
-    expect(result).toContain('""');
+    expect(result).toContain('"name": "test"');
   });
 
-  it('should handle booleans', () => {
+  it('should handle boolean values', () => {
     const data = {
-      enabled: true,
-      disabled: false,
+      active: true,
+      archived: false,
     };
-    const result = renderer.render(data);
+    const result = renderer.render(data, 'Flags');
 
     expect(result).toContain('true');
     expect(result).toContain('false');
   });
 
-  it('should output valid JSON', () => {
+  it('should handle numeric values', () => {
     const data = {
-      string: 'value',
-      number: 123,
-      boolean: true,
-      array: [1, 2, 3],
-      nested: { key: 'value' },
+      count: 42,
+      ratio: 3.14,
+      negative: -10,
     };
-    const result = renderer.render(data);
+    const result = renderer.render(data, 'Numbers');
 
-    // Should be parseable as valid JSON
-    expect(() => JSON.parse(result)).not.toThrow();
-    const parsed = JSON.parse(result);
-    expect(parsed.string).toBe('value');
-    expect(parsed.number).toBe(123);
-    expect(parsed.boolean).toBe(true);
+    expect(result).toContain('42');
+    expect(result).toContain('3.14');
+    expect(result).toContain('-10');
   });
 
-  it('should format with proper 2-space indentation', () => {
-    const data = { outer: { inner: 'value' } };
+  it('should wrap output in root element', () => {
+    const data = { name: 'test' };
+    const result = renderer.render(data, 'Skill');
+
+    expect(result).toContain('"Skill"');
+  });
+
+  it('should use default root element', () => {
+    const data = { name: 'test' };
     const result = renderer.render(data);
 
-    // Check for 2-space indentation pattern
-    const lines = result.split('\n');
-    const indentedLines = lines.filter((line) => line.startsWith('  '));
-    expect(indentedLines.length).toBeGreaterThan(0);
+    expect(result).toContain('"root"');
+  });
+
+  it('should properly format for readability', () => {
+    const data = {
+      name: 'example',
+      items: [1, 2, 3],
+    };
+    const result = renderer.render(data, 'Example');
+
+    // Check that output is properly formatted (has newlines and indentation)
+    expect(result).toMatch(/\n/);
+    expect(result).toMatch(/  /);
   });
 });

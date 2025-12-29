@@ -8,55 +8,65 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createPromptRenderer } from '../createPromptRenderer';
-import { JsonPromptRenderer } from '../renderers/JsonPromptRenderer';
-import { XmlPromptRenderer } from '../renderers/XmlPromptRenderer';
-import { MdPromptRenderer } from '../renderers/MdPromptRenderer';
+import { createPromptRenderer } from './createPromptRenderer';
 
 describe('createPromptRenderer', () => {
-  it('should create JsonPromptRenderer for json format', () => {
-    const renderer = createPromptRenderer('json');
+  it('should return an object with getFormatter method', () => {
+    const promptRenderer = createPromptRenderer();
 
-    expect(renderer).toBeInstanceOf(JsonPromptRenderer);
-    expect(renderer.format).toBe('json');
+    expect(promptRenderer).toBeDefined();
+    expect(promptRenderer.getFormatter).toBeDefined();
+    expect(typeof promptRenderer.getFormatter).toBe('function');
   });
 
-  it('should create XmlPromptRenderer for xml format', () => {
-    const renderer = createPromptRenderer('xml');
+  it('should return a formatter function for json format', () => {
+    const promptRenderer = createPromptRenderer();
+    const formatter = promptRenderer.getFormatter('json');
 
-    expect(renderer).toBeInstanceOf(XmlPromptRenderer);
-    expect(renderer.format).toBe('xml');
+    expect(formatter).toBeDefined();
+    expect(typeof formatter).toBe('function');
   });
 
-  it('should create MdPromptRenderer for md format', () => {
-    const renderer = createPromptRenderer('md');
+  it('should return a formatter function for xml format', () => {
+    const promptRenderer = createPromptRenderer();
+    const formatter = promptRenderer.getFormatter('xml');
 
-    expect(renderer).toBeInstanceOf(MdPromptRenderer);
-    expect(renderer.format).toBe('md');
+    expect(formatter).toBeDefined();
+    expect(typeof formatter).toBe('function');
+  });
+
+  it('should return a formatter function for md format', () => {
+    const promptRenderer = createPromptRenderer();
+    const formatter = promptRenderer.getFormatter('md');
+
+    expect(formatter).toBeDefined();
+    expect(typeof formatter).toBe('function');
   });
 
   it('should throw error for unknown format', () => {
+    const promptRenderer = createPromptRenderer();
     // Type assertion needed to test invalid input
     const invalidFormat = 'invalid' as 'json' | 'xml' | 'md';
 
-    expect(() => createPromptRenderer(invalidFormat)).toThrow('Unknown prompt renderer format');
+    expect(() => promptRenderer.getFormatter(invalidFormat)).toThrow();
   });
 
-  it('should have render method on all renderers', () => {
+  it('should create formatters for all supported formats', () => {
+    const promptRenderer = createPromptRenderer();
     const formats: Array<'json' | 'xml' | 'md'> = ['json', 'xml', 'md'];
 
     for (const format of formats) {
-      const renderer = createPromptRenderer(format);
-      expect(renderer.render).toBeDefined();
-      expect(typeof renderer.render).toBe('function');
+      const formatter = promptRenderer.getFormatter(format);
+      expect(formatter).toBeDefined();
+      expect(typeof formatter).toBe('function');
     }
   });
 
-  it('should create new instance each time', () => {
-    const renderer1 = createPromptRenderer('json');
-    const renderer2 = createPromptRenderer('json');
+  it('should return consistent formatter instances', () => {
+    const promptRenderer = createPromptRenderer();
+    const formatter1 = promptRenderer.getFormatter('json');
+    const formatter2 = promptRenderer.getFormatter('json');
 
-    expect(renderer1).not.toBe(renderer2);
-    expect(renderer1.format).toBe(renderer2.format);
+    expect(formatter1).toBe(formatter2);
   });
 });

@@ -10,10 +10,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { XmlPromptRenderer } from '../XmlPromptRenderer';
+import { createXmlPromptRenderer } from './XmlPromptRenderer';
 
 describe('XmlPromptRenderer', () => {
-  const renderer = new XmlPromptRenderer();
+  const renderer = createXmlPromptRenderer();
 
   it('should have xml format identifier', () => {
     expect(renderer.format).toBe('xml');
