@@ -25,7 +25,6 @@ export const createMdPromptRenderer = (): PromptRenderer => {
    *
    * @param obj The object to render
    * @param headingLevel The heading level for this object's keys (3 = H3, 4 = H4, etc)
-   * @param lines Array to accumulate output lines
    * @param indentLevel Current indentation level for list items
    */
   const renderObject = (
@@ -37,14 +36,14 @@ export const createMdPromptRenderer = (): PromptRenderer => {
     let output = '';
 
     for (const [key, value] of entries) {
-      // Add heading for this key
-      const heading = '#'.repeat(headingLevel);
-      output += `${heading} ${key}`;
-
       if (value === null || value === undefined) {
         // Skip null/undefined values
         continue;
       }
+
+      // Add heading for this key
+      const heading = '#'.repeat(headingLevel);
+      output += `${heading} ${key}`;
 
       if (typeof value === 'object' && !Array.isArray(value)) {
         // Nested object - recurse with increased heading level
@@ -73,7 +72,6 @@ export const createMdPromptRenderer = (): PromptRenderer => {
    * Render an array as nested list items
    *
    * @param arr The array to render
-   * @param lines Array to accumulate output lines
    * @param indentLevel Current indentation level
    */
   const renderArray = (arr: unknown[], indentLevel: number): string => {
