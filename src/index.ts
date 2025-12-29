@@ -11,6 +11,7 @@
  *   - find_skills(): Search for skills by free-text query
  * - Delivers skill content via silent message insertion (noReply pattern)
  * - Supports nested skills with proper naming
+ * - Supports multiple prompt formats (XML, JSON, Markdown) with model-aware selection
  *
  * Design Decisions:
  * - Consolidates 50+ individual skill tools into 2 unified tools (cleaner namespace)
@@ -20,6 +21,7 @@
  * - Message insertion pattern ensures skill content persists (user messages not purged)
  * - Base directory context enables relative path resolution
  * - Skills require restart to reload (acceptable trade-off)
+ * - Prompt format selection: model-aware via modelRenderers config, default XML
  *
  * @see https://github.com/anthropics/skills
  */
@@ -29,7 +31,8 @@ import { tool, ToolContext, type Plugin } from '@opencode-ai/plugin';
 import { createInstructionInjector } from './lib/OpenCodeChat';
 import { createApi } from './api';
 import { getPluginConfig } from './config';
-import { jsonToXml } from './lib/xml';
+import { createPromptRenderer } from './lib/createPromptRenderer';
+import { getModelFormat } from './lib/getModelFormat';
 
 export const SkillsPlugin: Plugin = async (ctx) => {
   const config = await getPluginConfig(ctx);
@@ -49,9 +52,15 @@ export const SkillsPlugin: Plugin = async (ctx) => {
             .describe('An array of skill names to load.'),
         },
         execute: async (args, toolCtx: ToolContext) => {
+          // Resolve the appropriate format for the current model
+          const format = await getModelFormat(ctx.client, toolCtx, config);
+          const renderer = createPromptRenderer(format);
+
           const results = await api.loadSkill(args.skill_names);
           for await (const skill of results.loaded) {
-            await sendPrompt(jsonToXml(skill, 'Skill'), { sessionId: toolCtx.sessionID });
+            await sendPrompt(renderer.render(skill, 'Skill'), {
+              sessionId: toolCtx.sessionID,
+            });
           }
 
           return JSON.stringify({
@@ -68,9 +77,13 @@ export const SkillsPlugin: Plugin = async (ctx) => {
             .union([tool.schema.string(), tool.schema.array(tool.schema.string())])
             .describe('The search query string or array of strings.'),
         },
-        execute: async (args) => {
+        execute: async (args, toolCtx: ToolContext) => {
+          // Resolve the appropriate format for the current model
+          const format = await getModelFormat(ctx.client, toolCtx, config);
+          const renderer = createPromptRenderer(format);
+
           const results = await api.findSkills(args);
-          const output = jsonToXml(results, 'SkillSearchResults');
+          const output = renderer.render(results, 'SkillSearchResults');
           return output;
         },
       }),
@@ -84,12 +97,18 @@ export const SkillsPlugin: Plugin = async (ctx) => {
             .describe('The relative path to the resource file within the skill directory.'),
         },
         execute: async (args, toolCtx: ToolContext) => {
+          // Resolve the appropriate format for the current model
+          const format = await getModelFormat(ctx.client, toolCtx, config);
+          const renderer = createPromptRenderer(format);
+
           const result = await api.readResource(args);
           if (!result.injection) {
             throw new Error('Failed to read resource');
           }
 
-          await sendPrompt(jsonToXml(result.injection), { sessionId: toolCtx.sessionID });
+          await sendPrompt(renderer.render(result.injection), {
+            sessionId: toolCtx.sessionID,
+          });
 
           return JSON.stringify({
             result: 'Resource injected successfully',

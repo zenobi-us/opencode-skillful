@@ -93,6 +93,8 @@ export type SkillRank = {
 export type PluginConfig = {
   debug: boolean;
   basePaths: string[];
+  promptRenderer: 'json' | 'xml' | 'md';
+  modelRenderers?: Record<string, 'json' | 'xml' | 'md'>;
 };
 
 export type LogType = 'log' | 'debug' | 'error' | 'warn';
