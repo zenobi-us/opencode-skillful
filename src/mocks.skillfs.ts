@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { mock } from 'bun:test';
 import { Volume } from 'memfs';
 import path from 'node:path';
