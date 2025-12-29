@@ -14,6 +14,8 @@
 import { describe, it, expect } from 'vitest';
 import { createMdPromptRenderer } from './MdPromptRenderer';
 
+type TestData = Record<string, unknown>;
+
 describe('MdPromptRenderer', () => {
   const renderer = createMdPromptRenderer();
 
@@ -22,8 +24,8 @@ describe('MdPromptRenderer', () => {
   });
 
   it('should render simple object with H1 title and H3 headings', () => {
-    const data = { name: 'test', value: '42', content: 'Some content' };
-    const result = renderer.render(data as any, 'Example');
+    const data: TestData = { name: 'test', value: '42', content: 'Some content' };
+    const result = renderer.render(data, 'Example');
 
     expect(result).toContain('# Example');
     expect(result).toContain('### name');
@@ -33,13 +35,13 @@ describe('MdPromptRenderer', () => {
   });
 
   it('should use H4 for nested objects', () => {
-    const data = {
+    const data: TestData = {
       metadata: {
         version: '1.0',
       },
       content: '',
     };
-    const result = renderer.render(data as any, 'Test');
+    const result = renderer.render(data, 'Test');
 
     expect(result).toContain('### metadata');
     expect(result).toContain('#### version');
@@ -47,11 +49,11 @@ describe('MdPromptRenderer', () => {
   });
 
   it('should render arrays as nested bullets', () => {
-    const data = {
+    const data: TestData = {
       tags: ['important', 'urgent', 'review'],
       content: '',
     };
-    const result = renderer.render(data as any, 'Tags');
+    const result = renderer.render(data, 'Tags');
 
     expect(result).toContain('### tags');
     expect(result).toContain('- *important*');
@@ -60,13 +62,13 @@ describe('MdPromptRenderer', () => {
   });
 
   it('should HTML-escape special characters in values', () => {
-    const data = {
+    const data: TestData = {
       html: '<script>alert("xss")</script>',
       ampersand: 'A & B',
       quotes: 'He said "hello"',
       content: '',
     };
-    const result = renderer.render(data as any, 'Escaped');
+    const result = renderer.render(data, 'Escaped');
 
     expect(result).toContain('&lt;script&gt;');
     expect(result).toContain('&amp;');
@@ -74,13 +76,13 @@ describe('MdPromptRenderer', () => {
   });
 
   it('should skip null and undefined values', () => {
-    const data = {
+    const data: TestData = {
       name: 'test',
       value: null,
       optional: undefined,
       content: '',
     };
-    const result = renderer.render(data as any, 'Test');
+    const result = renderer.render(data, 'Test');
 
     expect(result).toContain('- **name**: *test*');
     expect(result).not.toContain('### value');
@@ -88,12 +90,12 @@ describe('MdPromptRenderer', () => {
   });
 
   it('should append skill content after separator', () => {
-    const data = {
+    const data: TestData = {
       name: 'git-commits',
       description: 'Guidelines for git commits',
       content: 'Use imperative mood...\nWrite clear messages...',
     };
-    const result = renderer.render(data as any, 'Skill');
+    const result = renderer.render(data, 'Skill');
 
     expect(result).toContain('---');
     expect(result).toContain('### Content');
@@ -102,14 +104,14 @@ describe('MdPromptRenderer', () => {
   });
 
   it('should handle mixed nested and array data', () => {
-    const data = {
+    const data: TestData = {
       user: {
         name: 'Alice',
         roles: ['admin', 'reviewer'],
       },
       content: '',
     };
-    const result = renderer.render(data as any, 'User');
+    const result = renderer.render(data, 'User');
 
     expect(result).toContain('### user');
     expect(result).toContain('#### name');
@@ -119,7 +121,7 @@ describe('MdPromptRenderer', () => {
   });
 
   it('should handle deeply nested objects', () => {
-    const data = {
+    const data: TestData = {
       level1: {
         level2: {
           level3: {
@@ -129,7 +131,7 @@ describe('MdPromptRenderer', () => {
       },
       content: '',
     };
-    const result = renderer.render(data as any, 'Nested');
+    const result = renderer.render(data, 'Nested');
 
     expect(result).toContain('### level1');
     expect(result).toContain('#### level2');
