@@ -30,6 +30,9 @@ function createMessageModelIdAccountant() {
     const sessionMap = modelUsage.get(args.sessionID);
     if (sessionMap && sessionMap[args.messageID]) {
       delete sessionMap[args.messageID];
+      if (Object.keys(sessionMap).length === 0) {
+        modelUsage.delete(args.sessionID);
+      }
     }
   };
 
