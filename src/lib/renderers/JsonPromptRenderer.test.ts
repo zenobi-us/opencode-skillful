@@ -113,6 +113,6 @@ describe('JsonPromptRenderer', () => {
 
     // Check that output is properly formatted (has newlines and indentation)
     expect(result).toMatch(/\n/);
-    expect(result).toMatch(/  /);
+    expect(result).toMatch(/[ ]{2}/);
   });
 });
