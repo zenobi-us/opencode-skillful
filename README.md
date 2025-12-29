@@ -74,6 +74,82 @@ skill_find "testing -performance"
 - Natural query syntax with negation and quoted phrases
 - Skill ranking by relevance (name matches weighted higher)
 - Silent message insertion (noReply pattern)
+- **Pluggable prompt rendering** with model-aware format selection (XML, JSON, Markdown)
+
+## Prompt Renderer Configuration
+
+The plugin supports multiple formats for prompt injection, allowing you to optimize for different LLM models:
+
+### Supported Formats
+
+- **XML** (default): Claude-optimized, human-readable structured format
+- **JSON**: GPT-optimized, strict JSON formatting for strong parsing models
+- **Markdown**: Human-readable format with headings and nested lists
+
+### Configuration
+
+Create `.opencode-skillful.json` in your project root or `~/.config/opencode-skillful/config.json` globally:
+
+```json
+{
+  "promptRenderer": "xml",
+  "modelRenderers": {
+    "claude-3-5-sonnet": "xml",
+    "gpt-4": "json",
+    "llama-2": "md"
+  }
+}
+```
+
+**Configuration Options:**
+
+- `promptRenderer` (string): Global default format (`'xml'` | `'json'` | `'md'`). Default: `'xml'`
+- `modelRenderers` (object): Per-model format overrides. Map model IDs to preferred formats.
+
+### How It Works
+
+1. When a tool executes (skill_use, skill_find, skill_resource), it queries the active model
+2. The plugin checks `modelRenderers[modelID]` for a model-specific preference
+3. If found, uses that format; otherwise falls back to `promptRenderer` default
+4. Renders the skill metadata/results in the selected format and injects into the prompt
+
+### Format Examples
+
+#### XML (Default - Claude Optimized)
+
+```xml
+<Skill>
+  <name>test-skill</name>
+  <description>A test skill</description>
+  <toolName>test_skill</toolName>
+</Skill>
+```
+
+#### JSON (GPT Optimized)
+
+```json
+{
+  "name": "test-skill",
+  "description": "A test skill",
+  "toolName": "test_skill"
+}
+```
+
+#### Markdown (Human Readable)
+
+```markdown
+### name
+
+- **name**: _test-skill_
+
+### description
+
+- **description**: _A test skill_
+
+### toolName
+
+- **toolName**: _test_skill_
+```
 
 ## Skill Discovery Paths
 
