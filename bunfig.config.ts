@@ -11,6 +11,7 @@
 
 export default {
   debug: false,
+  basePaths: [] as string[],
   promptRenderer: 'xml' as const,
 
   /**
