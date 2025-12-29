@@ -9,7 +9,7 @@ import type { PromptRenderer } from '../PromptRenderer';
 
 export const createJsonPromptRenderer = (): PromptRenderer => {
   const format = 'json' as const;
-  const render = (data: object, rootElement: string): string => {
+  const render = (data: object, rootElement = 'root'): string => {
     return JSON.stringify({ [rootElement]: data }, null, 2);
   };
 

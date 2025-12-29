@@ -136,9 +136,11 @@ Set your preferences in `.opencode-skillful.json`:
 
 ```json
 {
-  "name": "git-commits",
-  "description": "Guidelines for writing effective git commit messages",
-  "toolName": "writing_git_commits"
+  "Skill": {
+    "name": "git-commits",
+    "description": "Guidelines for writing effective git commit messages",
+    "toolName": "writing_git_commits"
+  }
 }
 ```
 
@@ -151,10 +153,18 @@ Set your preferences in `.opencode-skillful.json`:
 #### Markdown Format (Human Readable)
 
 ```markdown
-## git-commits
+# Skill
+
+### name
 
 - **name**: _git-commits_
+
+### description
+
 - **description**: _Guidelines for writing effective git commit messages_
+
+### toolName
+
 - **toolName**: _writing_git_commits_
 ```
 
