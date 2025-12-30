@@ -8,7 +8,18 @@ Differentiators include:
 - The agent uses `skill_use "skill_name"` and,
 - The agent can use `skill_resource skill_relative/resource/path` to read reference material
 
-## Key Differences from Built-in OpenCode Skills
+## Table of Contents
+
+- [Key Differences from Built-in OpenCode](#key-differences-from-built-in-opencode) - Why choose opencode-skillful
+- [Quick Start](#quick-start) - Get started in 2 minutes
+- [Installation](#installation) - Set up the plugin
+- [Three Core Tools](#three-core-tools) - Overview of skill_find, skill_use, skill_resource
+- [Running Skill Scripts](#running-skill-scripts) - How agents execute skill scripts
+- [Usage Examples](#usage-examples) - Real-world scenarios
+- [Plugin Tools](#plugin-tools) - Detailed tool documentation
+- [Configuration](#configuration) - Advanced setup
+
+## Key Differences from Built-in OpenCode
 
 This plugin differs from the built-in OpenCode skills implementation in important ways:
 
@@ -50,15 +61,6 @@ Different LLM providers prefer different formats. opencode-skillful lets you opt
 
 The plugin automatically detects your active model and renders skills in the optimal format for that provider.
 
-## Table of Contents
-
-- [Quick Start](#quick-start) - Get started in 2 minutes
-- [Installation](#installation) - Set up the plugin
-- [Three Core Tools](#three-core-tools) - Overview of skill_find, skill_use, skill_resource
-- [Running Skill Scripts](#running-skill-scripts) - How agents execute skill scripts
-- [Usage Examples](#usage-examples) - Real-world scenarios
-- [Plugin Tools](#plugin-tools) - Detailed tool documentation
-- [Configuration](#configuration) - Advanced setup
 - [Architecture](#architecture) - How it works internally
 - [Creating Skills](#creating-skills) - Build your own skills
 
