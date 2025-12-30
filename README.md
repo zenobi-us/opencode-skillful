@@ -136,11 +136,9 @@ Set your preferences in `.opencode-skillful.json`:
 
 ```json
 {
-  "Skill": {
-    "name": "git-commits",
-    "description": "Guidelines for writing effective git commit messages",
-    "toolName": "writing_git_commits"
-  }
+  "name": "git-commits",
+  "description": "Guidelines for writing effective git commit messages",
+  "toolName": "writing_git_commits"
 }
 ```
 
