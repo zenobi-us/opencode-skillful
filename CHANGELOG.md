@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/zenobi-us/opencode-skillful/compare/v1.1.0...v1.2.0) (2025-12-30)
+
+
+### Features
+
+* **config:** support provider-specific model renderer selection with fallback pattern ([#13](https://github.com/zenobi-us/opencode-skillful/issues/13)) ([0067a12](https://github.com/zenobi-us/opencode-skillful/commit/0067a12af4ea19eff0989f0e356072d48027b940))
+
 ## [1.1.0](https://github.com/zenobi-us/opencode-skillful/compare/v1.0.0...v1.1.0) (2025-12-26)
 
 
