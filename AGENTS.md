@@ -34,6 +34,7 @@
 - **Methods/properties**: camelCase
 - **Status strings**: use union types (e.g., `'pending' | 'running' | 'completed' | 'failed' | 'cancelled'`)
 - **Explicit types**: prefer explicit type annotations over inference
+- **NEVER USE ANY**: avoid `any` type at all costs
 - **Return types**: optional (not required but recommended for public methods)
 
 ### Error Handling
