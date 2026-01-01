@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.0...v1.2.1) (2026-01-01)
+
+
+### Bug Fixes
+
+* relax resource type validation to support plural forms ([b4f543f](https://github.com/zenobi-us/opencode-skillful/commit/b4f543fe9d79e615ba801e277d0f58b889ddecc7))
+
 ## [1.2.0](https://github.com/zenobi-us/opencode-skillful/compare/v1.1.0...v1.2.0) (2025-12-30)
 
 
