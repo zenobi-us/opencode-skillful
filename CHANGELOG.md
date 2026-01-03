@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.2...v1.2.3) (2026-01-03)
+
+
+### Bug Fixes
+
+* **services:** properly join resource type and path in resolver ([57a90d8](https://github.com/zenobi-us/opencode-skillful/commit/57a90d86c4a2de1877ba0e356d52327e3b2a2153))
+
 ## [1.2.2](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.1...v1.2.2) (2026-01-02)
 
 
