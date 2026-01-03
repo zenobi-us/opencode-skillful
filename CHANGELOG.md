@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.2](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.1...v1.2.2) (2026-01-02)
+
+
+### Bug Fixes
+
+* properly list resources ([e5b33df](https://github.com/zenobi-us/opencode-skillful/commit/e5b33df61a6a20881c000790daf45f36a570ea94))
+* update renderer tests to use new Args API with real use cases ([5483b9c](https://github.com/zenobi-us/opencode-skillful/commit/5483b9c2d3535ce13a3927abed2dec987efb5512))
+
 ## [1.2.1](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.0...v1.2.1) (2026-01-01)
 
 
