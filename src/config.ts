@@ -35,8 +35,9 @@ import type { Config } from 'bunfig';
 import { loadConfig } from 'bunfig';
 
 import type { PluginInput } from '@opencode-ai/plugin';
-import { join } from 'node:path';
 import envPaths from 'env-paths';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { PluginConfig } from './types';
 
 export const OpenCodePaths = envPaths('opencode', { suffix: '' });
@@ -60,6 +61,14 @@ export async function getPluginConfig(ctx: PluginInput) {
   resolvedConfig.basePaths.push(
     join(ctx.directory, '.opencode', 'skills') // Highest priority: Project-local
   );
+
+  // Resolve '~' paths in basePaths to absolute paths
+  resolvedConfig.basePaths = resolvedConfig.basePaths.map((path) => {
+    if (path.startsWith('~/')) {
+      return join(homedir(), path.slice(2));
+    }
+    return path;
+  });
 
   return resolvedConfig;
 }
