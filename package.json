@@ -22,7 +22,6 @@
     "@opencode-ai/plugin": "1.0.85",
     "bunfig": "^0.15.6",
     "dedent": "^1.7.1",
-    "env-paths": "^3.0.0",
     "gray-matter": "^4.0.3",
     "mime": "^4.1.0",
     "ramda": "^0.30.0",

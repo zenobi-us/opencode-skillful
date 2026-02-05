@@ -9,5 +9,5 @@ coverage/
 .eslintcache
 .bun/
 .bun.lockb
-.memory/
+!.memory/
 in-memoria*

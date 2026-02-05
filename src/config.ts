@@ -1,32 +1,30 @@
 /**
  * Plugin Configuration - Skill Discovery and Prompt Rendering
  *
- * WHY: Skills can be stored in two places:
- * 1. User-global: ~/.opencode/skills/ (or platform equivalent)
- * 2. Project-local: ./project/.opencode/skills/
+ * WHY: Skills can be stored in multiple places:
+ * 1. User-global: ~/.config/opencode/skills/ (or platform equivalent)
+ * 2. User-global (alt): ~/.opencode/skills/
+ * 3. Project-local: ./project/.opencode/skills/
  *
- * This module resolves both paths with proper priority so:
+ * This module resolves paths with proper priority so:
  * - Users can install global skills once, reuse across projects
  * - Projects can override/add skills locally without affecting other projects
  *
- * PATH PRIORITY (Reverse order - last wins):
- * 1. Global config path (lowest priority): ~/.opencode/skills/
- * 2. Project-local path (highest priority): ./.opencode/skills/
+ * PATH PRIORITY (last wins):
+ * 1. XDG config path: $XDG_CONFIG_HOME/opencode/skills/ (lowest)
+ * 2. Home config path: ~/.config/opencode/skills/
+ * 3. Home dotfile path: ~/.opencode/skills/
+ * 4. Project-local path: ./.opencode/skills/ (highest)
  *
- * WHY THIS ORDER: A developer can check in skills via ./.opencode/skills/
- * and those will be discovered first. If a skill with the same name exists
- * in ~/.opencode/skills/, the project-local version wins (last one registered).
+ * WINDOWS PATHS (matching OpenCode's conventions):
+ * - $XDG_CONFIG_HOME/opencode/skills/ (if XDG set)
+ * - $LOCALAPPDATA/opencode/skills/
+ * - %USERPROFILE%/.config/opencode/skills/
+ * - %USERPROFILE%/.opencode/skills/
  *
- * WHY envPaths: Handles platform-specific paths correctly:
- * - Linux: ~/.config/opencode/skills/
- * - macOS: ~/Library/Preferences/opencode/skills/
- * - Windows: %APPDATA%/opencode/skills/
- * Without this, hard-coding ~/.opencode/ fails on non-Unix systems.
- *
- * PROMPT RENDERER CONFIGURATION:
- * - promptRenderer: Default format for prompt injection ('xml' | 'json' | 'md')
- * - modelRenderers: Per-model format overrides (optional)
- * - Loaded via bunfig from .opencode-skillful.json or ~/.config/opencode-skillful/config.json
+ * WHY NOT env-paths: The env-paths library uses Windows conventions
+ * (%APPDATA%/<name>/Config) that don't match OpenCode's actual behavior.
+ * OpenCode uses XDG-style paths on all platforms for consistency.
  *
  * @param ctx PluginInput from OpenCode runtime (provides working directory)
  * @returns Promise<PluginConfig> with resolved paths, debug flag, and renderer config
@@ -35,12 +33,48 @@ import type { Config } from 'bunfig';
 import { loadConfig } from 'bunfig';
 
 import type { PluginInput } from '@opencode-ai/plugin';
-import envPaths from 'env-paths';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { PluginConfig } from './types';
 
-export const OpenCodePaths = envPaths('opencode', { suffix: '' });
+/**
+ * Gets OpenCode-compatible config paths for the current platform.
+ *
+ * Matches OpenCode's path resolution logic from internal/config/config.go:
+ * - Uses XDG_CONFIG_HOME if set
+ * - Falls back to LOCALAPPDATA on Windows, ~/.config on Unix
+ * - Also includes ~/.opencode/ as an alternative
+ *
+ * @returns Array of config directory paths in priority order (lowest to highest)
+ */
+export function getOpenCodeConfigPaths(): string[] {
+  const home = homedir();
+  const paths: string[] = [];
+
+  // XDG_CONFIG_HOME takes precedence if set (all platforms)
+  const xdgConfig = process.env.XDG_CONFIG_HOME;
+  if (xdgConfig) {
+    paths.push(join(xdgConfig, 'opencode'));
+  }
+
+  if (process.platform === 'win32') {
+    // Windows: LOCALAPPDATA fallback (matches OpenCode behavior)
+    const localAppData = process.env.LOCALAPPDATA;
+    if (localAppData) {
+      paths.push(join(localAppData, 'opencode'));
+    }
+    // Also check %USERPROFILE%/.config/opencode (XDG-style on Windows)
+    paths.push(join(home, '.config', 'opencode'));
+  } else {
+    // Unix: ~/.config/opencode
+    paths.push(join(home, '.config', 'opencode'));
+  }
+
+  // All platforms: ~/.opencode/ as alternative
+  paths.push(join(home, '.opencode'));
+
+  return paths;
+}
 
 /**
  * Expands tilde (~) in a path to the user's home directory.
@@ -67,14 +101,20 @@ export function expandTildePath(path: string): string {
   return path;
 }
 
+/**
+ * Default skill base paths matching OpenCode's conventions.
+ * Paths are in priority order (lowest to highest).
+ */
+const defaultSkillBasePaths = getOpenCodeConfigPaths().map((configPath) =>
+  join(configPath, 'skills')
+);
+
 const options: Config<PluginConfig> = {
   name: 'opencode-skillful',
   cwd: './',
   defaultConfig: {
     debug: false,
-    basePaths: [
-      join(OpenCodePaths.config, 'skills'), // Lowest priority: Standard User Config (windows)
-    ],
+    basePaths: defaultSkillBasePaths,
     promptRenderer: 'xml',
     modelRenderers: {},
   },
