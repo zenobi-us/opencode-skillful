@@ -42,6 +42,31 @@ import { PluginConfig } from './types';
 
 export const OpenCodePaths = envPaths('opencode', { suffix: '' });
 
+/**
+ * Expands tilde (~) in a path to the user's home directory.
+ *
+ * WHY: When users configure paths in JSON config files, shell expansion
+ * doesn't happen automatically. Paths like "~/my-skills" remain literal
+ * strings, causing file operations to fail.
+ *
+ * HANDLES:
+ * - "~" alone → home directory
+ * - "~/path" → home directory + path
+ * - Other paths → unchanged
+ *
+ * @param path - The path string to expand
+ * @returns The expanded path with ~ resolved to home directory
+ */
+export function expandTildePath(path: string): string {
+  if (path === '~') {
+    return homedir();
+  }
+  if (path.startsWith('~/')) {
+    return join(homedir(), path.slice(2));
+  }
+  return path;
+}
+
 const options: Config<PluginConfig> = {
   name: 'opencode-skillful',
   cwd: './',
@@ -63,12 +88,7 @@ export async function getPluginConfig(ctx: PluginInput) {
   );
 
   // Resolve '~' paths in basePaths to absolute paths
-  resolvedConfig.basePaths = resolvedConfig.basePaths.map((path) => {
-    if (path.startsWith('~/')) {
-      return join(homedir(), path.slice(2));
-    }
-    return path;
-  });
+  resolvedConfig.basePaths = resolvedConfig.basePaths.map(expandTildePath);
 
   return resolvedConfig;
 }
