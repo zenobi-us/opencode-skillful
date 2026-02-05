@@ -1,6 +1,6 @@
 {
   "name": "@zenobius/opencode-skillful",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "OpenCode Skills Plugin - Anthropic Agent Skills Specification implementation",
   "type": "module",
   "module": "src/index.ts",

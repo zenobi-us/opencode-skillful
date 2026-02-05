@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.4](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.3...v1.2.4) (2026-02-05)
+
+
+### Bug Fixes
+
+* **config:** expand user constructions for basePaths ([18fd7d3](https://github.com/zenobi-us/opencode-skillful/commit/18fd7d331b55282500885146b5d7e6e9c59b2d86))
+* **config:** use OpenCode-compatible paths on Windows ([c2ff121](https://github.com/zenobi-us/opencode-skillful/commit/c2ff121eafbdce3959f0adf0b39fb9e39734f751))
+
 ## [1.2.3](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.2...v1.2.3) (2026-01-03)
 
 
