@@ -74,9 +74,9 @@ const SkillFrontmatterSchema = tool.schema.object({
   metadata: tool.schema.record(tool.schema.string(), tool.schema.string()).optional(),
 });
 
-const stripTrailingPathSeparators = (path: string): string => path.replace(/[\\/]+$/, '');
+export const stripTrailingPathSeparators = (path: string): string => path.replace(/[\\/]+$/, '');
 
-const suggestSkillsDirectoryPath = (path: string): string | null => {
+export const suggestSkillsDirectoryPath = (path: string): string | null => {
   const trimmedPath = stripTrailingPathSeparators(path);
 
   if (trimmedPath.toLowerCase() === 'skill') {
