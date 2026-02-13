@@ -87,7 +87,7 @@ const suggestSkillsDirectoryPath = (path: string): string | null => {
     return null;
   }
 
-  return trimmedPath.replace(/skill$/i, 'skills');
+  return trimmedPath.replace(/skill$/i, () => 'skills');
 };
 
 export function createSkillRegistryController() {
