@@ -94,6 +94,7 @@ export const SkillsPlugin: Plugin = async (ctx) => {
           for await (const skill of results.loaded) {
             await sendPrompt(renderer({ data: skill, type: 'Skill' }), {
               sessionId: toolCtx.sessionID,
+              agent: toolCtx.agent,
             });
           }
 
@@ -161,6 +162,7 @@ export const SkillsPlugin: Plugin = async (ctx) => {
 
           await sendPrompt(renderer({ data: result.injection, type: 'SkillResource' }), {
             sessionId: toolCtx.sessionID,
+            agent: toolCtx.agent,
           });
 
           return JSON.stringify({
