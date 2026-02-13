@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.5](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.4...v1.2.5) (2026-02-13)
+
+
+### Bug Fixes
+
+* **config:** normalize base path handling for skill discovery (closes [#27](https://github.com/zenobi-us/opencode-skillful/issues/27)) ([#32](https://github.com/zenobi-us/opencode-skillful/issues/32)) ([ef8f0cd](https://github.com/zenobi-us/opencode-skillful/commit/ef8f0cdd657d3b91bce9424b043334f69daf7518))
+* **skill-injection:** keep active agent when loading skills ([#28](https://github.com/zenobi-us/opencode-skillful/issues/28)) ([#30](https://github.com/zenobi-us/opencode-skillful/issues/30)) ([d6b9b43](https://github.com/zenobi-us/opencode-skillful/commit/d6b9b43848d940bac8994198c9f44d71f585753a))
+
 ## [1.2.4](https://github.com/zenobi-us/opencode-skillful/compare/v1.2.3...v1.2.4) (2026-02-05)
 
 
