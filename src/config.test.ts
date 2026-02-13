@@ -1,7 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { expandTildePath, getOpenCodeConfigPaths } from './config';
+import {
+  expandTildePath,
+  getOpenCodeConfigPaths,
+  normalizeBasePaths,
+  resolveBasePath,
+} from './config';
 
 describe('expandTildePath', () => {
   describe('tilde expansion', () => {
@@ -69,6 +74,54 @@ describe('expandTildePath', () => {
       const result = expandTildePath(windowsPath);
       expect(result).toBe(windowsPath);
     });
+  });
+});
+
+describe('resolveBasePath', () => {
+  const projectDirectory = '/workspace/project';
+
+  it('resolves relative paths from project directory', () => {
+    const result = resolveBasePath('.opencode/skills', projectDirectory);
+    expect(result).toBe('/workspace/project/.opencode/skills');
+  });
+
+  it('keeps absolute paths absolute', () => {
+    const absolutePath = '/custom/skills';
+    const result = resolveBasePath(absolutePath, projectDirectory);
+    expect(result).toBe(absolutePath);
+  });
+
+  it('expands tilde paths before resolving', () => {
+    const result = resolveBasePath('~/skills', projectDirectory);
+    expect(result).toBe(join(homedir(), 'skills'));
+  });
+
+  it('returns empty string for blank values', () => {
+    const result = resolveBasePath('   ', projectDirectory);
+    expect(result).toBe('');
+  });
+});
+
+describe('normalizeBasePaths', () => {
+  const projectDirectory = '/workspace/project';
+
+  it('resolves relative paths against project directory', () => {
+    const result = normalizeBasePaths(['.opencode/skills'], projectDirectory);
+    expect(result).toEqual(['/workspace/project/.opencode/skills']);
+  });
+
+  it('drops empty entries', () => {
+    const result = normalizeBasePaths(['', '   ', '.opencode/skills'], projectDirectory);
+    expect(result).toEqual(['/workspace/project/.opencode/skills']);
+  });
+
+  it('deduplicates semantically equivalent paths while preserving order', () => {
+    const result = normalizeBasePaths(
+      ['.opencode/skills', '/workspace/project/.opencode/skills', '.opencode/skills/'],
+      projectDirectory
+    );
+
+    expect(result).toEqual(['/workspace/project/.opencode/skills']);
   });
 });
 
