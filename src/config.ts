@@ -34,8 +34,8 @@ import { loadConfig } from 'bunfig';
 
 import type { PluginInput } from '@opencode-ai/plugin';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
-import { PluginConfig } from './types';
+import { isAbsolute, join, normalize, resolve } from 'node:path';
+import type { PluginConfig } from './types';
 
 /**
  * Gets OpenCode-compatible config paths for the current platform.
@@ -101,6 +101,67 @@ export function expandTildePath(path: string): string {
   return path;
 }
 
+const createPathKey = (absolutePath: string): string => {
+  const normalizedPath = normalize(absolutePath);
+  if (process.platform === 'win32') {
+    return normalizedPath.toLowerCase();
+  }
+  return normalizedPath;
+};
+
+/**
+ * Resolve a configured base path to an absolute path.
+ *
+ * Resolution rules:
+ * - "~" / "~/..." are expanded to the user home directory
+ * - Absolute paths are preserved
+ * - Relative paths are resolved from the project directory
+ */
+export function resolveBasePath(basePath: string, projectDirectory: string): string {
+  const trimmedPath = basePath.trim();
+
+  if (trimmedPath.length === 0) {
+    return '';
+  }
+
+  const expandedPath = expandTildePath(trimmedPath);
+
+  if (isAbsolute(expandedPath)) {
+    return normalize(expandedPath);
+  }
+
+  return resolve(projectDirectory, expandedPath);
+}
+
+/**
+ * Normalize configured base paths:
+ * - Resolve to absolute paths
+ * - Remove empty entries
+ * - Remove duplicates while preserving priority order
+ */
+export function normalizeBasePaths(basePaths: string[], projectDirectory: string): string[] {
+  const uniquePaths = new Set<string>();
+  const normalizedPaths: string[] = [];
+
+  for (const basePath of basePaths) {
+    const normalizedPath = resolveBasePath(basePath, projectDirectory);
+
+    if (!normalizedPath) {
+      continue;
+    }
+
+    const key = createPathKey(normalizedPath);
+    if (uniquePaths.has(key)) {
+      continue;
+    }
+
+    uniquePaths.add(key);
+    normalizedPaths.push(normalizedPath);
+  }
+
+  return normalizedPaths;
+}
+
 /**
  * Default skill base paths matching OpenCode's conventions.
  * Paths are in priority order (lowest to highest).
@@ -123,12 +184,12 @@ const options: Config<PluginConfig> = {
 export async function getPluginConfig(ctx: PluginInput) {
   const resolvedConfig = await loadConfig(options);
 
-  resolvedConfig.basePaths.push(
-    join(ctx.directory, '.opencode', 'skills') // Highest priority: Project-local
-  );
+  const configuredBasePaths = [
+    ...resolvedConfig.basePaths,
+    join(ctx.directory, '.opencode', 'skills'), // Highest priority: Project-local
+  ];
 
-  // Resolve '~' paths in basePaths to absolute paths
-  resolvedConfig.basePaths = resolvedConfig.basePaths.map(expandTildePath);
+  resolvedConfig.basePaths = normalizeBasePaths(configuredBasePaths, ctx.directory);
 
   return resolvedConfig;
 }

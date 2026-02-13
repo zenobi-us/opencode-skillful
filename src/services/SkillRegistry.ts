@@ -74,6 +74,22 @@ const SkillFrontmatterSchema = tool.schema.object({
   metadata: tool.schema.record(tool.schema.string(), tool.schema.string()).optional(),
 });
 
+export const stripTrailingPathSeparators = (path: string): string => path.replace(/[\\/]+$/, '');
+
+export const suggestSkillsDirectoryPath = (path: string): string | null => {
+  const trimmedPath = stripTrailingPathSeparators(path);
+
+  if (trimmedPath.toLowerCase() === 'skill') {
+    return 'skills';
+  }
+
+  if (!/[\\/]skill$/i.test(trimmedPath)) {
+    return null;
+  }
+
+  return trimmedPath.replace(/skill$/i, () => 'skills');
+};
+
 export function createSkillRegistryController() {
   const store = new Map<string, Skill>();
 
@@ -154,6 +170,28 @@ export async function createSkillRegistry(
           '[OpencodeSkillful] No valid base paths found for skill discovery:',
           config.basePaths
         );
+
+        const typoCandidates = config.basePaths.flatMap((basePath) => {
+          const suggestedPath = suggestSkillsDirectoryPath(basePath);
+
+          if (!suggestedPath) {
+            return [];
+          }
+
+          if (doesPathExist(suggestedPath)) {
+            return [`${basePath} -> ${suggestedPath}`];
+          }
+
+          return [];
+        });
+
+        if (typoCandidates.length > 0) {
+          logger.warn(
+            '[OpencodeSkillful] Detected possible "skill" vs "skills" typo in basePaths:',
+            typoCandidates
+          );
+        }
+
         controller.ready.setStatus('ready');
         return;
       }
