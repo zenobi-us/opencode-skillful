@@ -123,6 +123,17 @@ describe('normalizeBasePaths', () => {
 
     expect(result).toEqual(['/workspace/project/.opencode/skills']);
   });
+
+  it('deduplicates Windows paths case-insensitively on Windows', () => {
+    if (process.platform !== 'win32') {
+      return;
+    }
+
+    const result = normalizeBasePaths(['C:\\Skills', 'c:\\skills'], 'C:\\workspace');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.toLowerCase()).toBe('c:\\skills');
+  });
 });
 
 describe('getOpenCodeConfigPaths', () => {
